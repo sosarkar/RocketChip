@@ -1,7 +1,9 @@
 language: scala
 # run on new infrastructure
 sudo: false
-cache: apt
+cache: 
+  - apt
+  - ccache
 # packages needed to build riscv-tools
 addons:
   apt:
