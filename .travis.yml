@@ -51,7 +51,7 @@ before_install:
   - git submodule update --init
   - cd ../..
   # use recently installed gcc
-  - export CXX=g++-4.8 CC=gcc-4.8
+  - export CXX="ccache g++-4.8" CC="ccache gcc-4.8"
 
 script:
   # test verilog
