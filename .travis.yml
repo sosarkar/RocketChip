@@ -5,7 +5,7 @@ cache:
   apt: true
   ccache: true
   directories:
-    - $RISCV
+    - $RISCV #cache riscv-tools
 # packages needed to build riscv-tools
 addons:
   apt:
