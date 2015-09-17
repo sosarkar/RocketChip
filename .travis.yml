@@ -2,8 +2,10 @@ language: scala
 # run on new infrastructure
 sudo: false
 cache: 
-  - apt
-  - ccache
+  apt: true
+  ccache: true
+  directories:
+    - $RISCV
 # packages needed to build riscv-tools
 addons:
   apt:
