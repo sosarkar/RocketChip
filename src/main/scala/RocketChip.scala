@@ -210,3 +210,8 @@ class OuterMemorySystem extends Module with TopLevelParameters {
     VLSIUtils.doOuterMemorySystemSerdes(mem_channels, io.mem, io.mem_backup, io.mem_backup_en, nMemChannels, params(HTIFWidth))
   } else { io.mem <> mem_channels }
 }
+
+// Strober
+class SimWrapper extends strober.SimWrapper(new Top)
+class NASTIShim extends strober.NASTIShim(new SimWrapper)
+

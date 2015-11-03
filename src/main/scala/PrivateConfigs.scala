@@ -5,6 +5,8 @@ import uncore._
 import rocket._
 import BOOM._
 import DefaultTestSuites._
+import strober._
+import junctions._
 
 class WithAllBooms extends ChiselConfig(
   (pname,site,here) => pname match { 
@@ -38,3 +40,42 @@ class BOOMFPGAConfig extends ChiselConfig(new WithAllBooms ++ new DefaultBOOMCon
 class BOOMCPPConfig extends  ChiselConfig(new WithAllBooms ++ new DefaultBOOMConfig ++ new DefaultCPPConfig)
 
 class HeterogenousBoomConfig extends ChiselConfig(new WithBoomAndRocketAlternating ++ new BOOMFPGAConfig)
+
+// Strober
+class SimConfig extends ChiselConfig(
+  (pname,site,here) => pname match {
+    case SampleNum    => 30
+    case TraceMaxLen  => 1024
+    case DaisyWidth   => 32
+    case ChannelLen   => 16
+    case ChannelWidth => 32
+  }
+)
+
+class NastiConfig extends ChiselConfig(
+  topDefinitions = (pname,site,here) => pname match {
+    case NASTIAddrBits => site(NASTIName) match {
+      case "Master" => 32
+      case "Slave"  => 32
+    }
+    case NASTIDataBits => site(NASTIName) match {
+      case "Master" => 32
+      case "Slave"  => 64
+    }
+    case NASTIIdBits => site(NASTIName) match {
+      case "Master" => 12
+      case "Slave"  => 6
+    }
+    case NASTIAddrSizeBits => 10
+
+    case MemBlockBytes   => here(CacheBlockBytes)
+    case MemAddrSizeBits => 28
+    case MemMaxCycles    => 256
+  }
+)
+
+// Strober
+class RocketSimConfig extends ChiselConfig(new DefaultFPGASmallConfig ++ new SimConfig)
+class RocketNastiConfig extends ChiselConfig(new NastiConfig ++ new DefaultFPGASmallConfig ++ new SimConfig)
+class BOOMSimConfig extends ChiselConfig(new SmallBOOMConfig ++ new SimConfig)
+class BOOMNastiConfig extends ChiselConfig(new NastiConfig ++ new SmallBOOMConfig ++ new SimConfig)
