@@ -26,7 +26,7 @@ run-$makeTargetName-debug: $$(addprefix $$(output_dir)/, $$(addsuffix .vpd, $$($
 """
 }
 
-class AssemblyTestSuite(makePrefix: String, toolsPrefix: String, val names: Set[String])(envName: String) extends RocketTestSuite {
+class AssemblyTestSuite(makePrefix: String, val toolsPrefix: String, val names: Set[String])(val envName: String) extends RocketTestSuite {
   val dir = "$(base_dir)/riscv-tools/riscv-tests/isa"
   val makeTargetName = makePrefix + "-" + envName + "-asm-tests"
   override def toString = s"$makeTargetName = \\\n" + names.map(n => s"\t$toolsPrefix-$envName-$n").mkString(" \\\n") + postScript
@@ -124,6 +124,6 @@ object DefaultTestSuites {
 
 object TestGenerator extends App {
   val gen = () => Class.forName("rocketchip."+args(0)).newInstance().asInstanceOf[Module]
-  chiselMain.run(args.drop(1), gen)
+  chiselMain.run(args.drop(1), gen, (c: Module) => new RocketChipTester(c, args.drop(1)))
   TestGeneration.generateMakefrag
 }
