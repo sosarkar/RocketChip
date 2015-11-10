@@ -124,6 +124,15 @@ object DefaultTestSuites {
 
 object TestGenerator extends App {
   val gen = () => Class.forName("rocketchip."+args(0)).newInstance().asInstanceOf[Module]
-  chiselMain.run(args.drop(1), gen, (c: Module) => new RocketChipTester(c, args.drop(1)))
+  args(0) match {
+    case "Top" if args exists (_.slice(0, 7) == "+sample")  => 
+      chiselMain.run(args.drop(1), gen, (c: Module) => new strober.Replay(c, args.drop(1)))
+    case "TopWrapper" => 
+      chiselMain.run(args.drop(1), gen, (c: Module) => new RocketChipSimTester(c, args.drop(1)))
+    case "NASTIShim" => 
+      chiselMain.run(args.drop(1), gen, (c: Module) => new RocketChipNASTIShimTester(c, args.drop(1)))
+    case _ => 
+      chiselMain.run(args.drop(1), gen, (c: Module) => new RocketChipTester(c, args.drop(1)))
+  }
   TestGeneration.generateMakefrag
 }

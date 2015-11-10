@@ -68,14 +68,14 @@ class NastiConfig extends ChiselConfig(
     }
     case NASTIAddrSizeBits => 10
 
-    case MemBlockBytes   => here(CacheBlockBytes)
+    case LineSize        => here(CacheBlockBytes)
     case MemAddrSizeBits => 28
     case MemMaxCycles    => 256
   }
 )
 
 // Strober
-class RocketSimConfig extends ChiselConfig(new DefaultFPGASmallConfig ++ new SimConfig)
-class RocketNastiConfig extends ChiselConfig(new NastiConfig ++ new DefaultFPGASmallConfig ++ new SimConfig)
+class RocketSimConfig extends ChiselConfig(new ExampleSmallConfig ++ new SimConfig)
+class RocketNastiConfig extends ChiselConfig(new NastiConfig ++ new ExampleSmallConfig ++ new SimConfig)
 class BOOMSimConfig extends ChiselConfig(new SmallBOOMConfig ++ new SimConfig)
 class BOOMNastiConfig extends ChiselConfig(new NastiConfig ++ new SmallBOOMConfig ++ new SimConfig)

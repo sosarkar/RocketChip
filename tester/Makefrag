@@ -1,0 +1,28 @@
+-include $(generated_dir)/$(MODEL).$(CONFIG).d
+
+$(MODEL)-compile-cpp: 
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(COMPILE_ARGS) --compileInitializationUnoptimized --noIoDebug"
+
+$(MODEL)-compile-cpp-debug:
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(COMPILE_ARGS) --debug --vcd"
+
+$(MODEL)-compile-v: 
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(COMPILE_ARGS) --v"
+
+$(MODEL)-isa-tests:
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) +isa +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL).$(CONFIG)" \
+	| tee $(log_dir)/$@.log
+
+$(MODEL)-bmarks-tests:
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) +bmarks +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL).$(CONFIG)" \
+	| tee $(log_dir)/$@.log
+
+$(addprefix $(MODEL)-, $(rv64ui-p-asm-tests)): $(MODEL)-%: $(isa_dir)/%.hex
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL).$(CONFIG) +vpdfile=$(generated_dir)/$(MODEL)-$*.vpd" \
+	| tee $(log_dir)/$@.log
+
+$(addprefix $(MODEL)-, $(basic-bmark-tests)): $(MODEL)-%: $(bmark_dir)/%.hex
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL).$(CONFIG) +vpdfile=$(generated_dir)/$(MODEL)-$*.vpd" \
+	| tee $(log_dir)/$@.log

@@ -212,6 +212,8 @@ class OuterMemorySystem extends Module with TopLevelParameters {
 }
 
 // Strober
-class SimWrapper extends strober.SimWrapper(new Top)
-class NASTIShim extends strober.NASTIShim(new SimWrapper)
-
+class TopWrapper extends strober.SimWrapper(new Top) {
+  // MemIO annotation
+  strober.SimMemIO(target.io.mem)
+}
+class NASTIShim extends strober.NASTIShim(new TopWrapper)

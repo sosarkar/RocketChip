@@ -1,0 +1,28 @@
+-include $(generated_dir)/TopWrapper.$(CONFIG).d
+
+TopWrapper-compile-cpp: 
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run TopWrapper $(COMPILE_ARGS) --compileInitializationUnoptimized --noIoDebug"
+
+TopWrapper-compile-cpp-debug:
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run TopWrapper $(COMPILE_ARGS) --debug --vcd"
+
+TopWrapper-compile-v: 
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run TopWrapper $(COMPILE_ARGS) --v"
+
+TopWrapper-isa-tests:
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run TopWrapper $(TEST_ARGS) +isa +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/TopWrapper.$(CONFIG)" \
+	| tee $(log_dir)/$@.log
+
+TopWrapper-bmarks-tests:
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run TopWrapper $(TEST_ARGS) +bmarks +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/TopWrapper.$(CONFIG)" \
+	| tee $(log_dir)/$@.log
+
+$(addprefix TopWrapper-, $(rv64ui-p-asm-tests)): TopWrapper-%: $(isa_dir)/%.hex
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run TopWrapper $(TEST_ARGS) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/TopWrapper.$(CONFIG) +vpdfile=$(generated_dir)/TopWrapper-$*.vpd" \
+	| tee $(log_dir)/$@.log
+
+$(addprefix TopWrapper-, $(basic-bmark-tests)): TopWrapper-%: $(bmark_dir)/%.hex
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run TopWrapper $(TEST_ARGS) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/TopWrapper.$(CONFIG) +vpdfile=$(generated_dir)/TopWrapper-$*.vpd" \
+	| tee $(log_dir)/$@.log

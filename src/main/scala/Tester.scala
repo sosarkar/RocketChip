@@ -44,17 +44,15 @@ abstract class SimMem(word_size: Int = 16, depth: Int = 1 << 20, verbose: Boolea
     for ((line, i) <- lines.zipWithIndex) {
       val base = (i * line.length) / 2
       assert(base % word_size == 0)
-      var offset = 0
-      var data = BigInt(0)
-      for (k <- (line.length - 2) to 0 by -2) {
+      (((line.length - 2) to 0 by -2) foldLeft (BigInt(0), 0)){case ((data, offset), k) =>
         val shift = 8 * (offset % word_size)
         val byte = ((parseNibble(line(k)) << 4) | parseNibble(line(k+1))).toByte
-        data |= int(byte) << shift
         if ((offset % word_size) == word_size - 1) {
-          mem((base+offset)>>off) = data
-          data = BigInt(0)
+          mem((base+offset)>>off) = data | int(byte) << shift
+          (BigInt(0), offset + 1)
+        } else {
+          (data | int(byte) << shift, offset + 1)
         }
-        offset += 1
       }
     }
   }
@@ -144,7 +142,6 @@ trait RocketTests extends AdvTests {
   }
 
   def run(c: Top, htif: TesterHTIF, maxcycles: Int) = {
-    reset(5)
     wire_poke(c.io.host.in.valid, 0)
     wire_poke(c.io.host.out.ready, 0)
     val startTime = System.nanoTime
@@ -157,57 +154,105 @@ trait RocketTests extends AdvTests {
             if (ok) "PASSED" else "FAILED", reason, cycles))
     println("Time elapsed = %.1f s, Simulation Speed = %.2f Hz".format(simTime, simSpeed))
     ok
-  }      
+  }
+      
+  def start(loadmem: String): Unit
+  def runTests(tests: Tests, loadmem: String) {
+    val suites = tests match {
+      case ISATests   => TestGeneration.asmSuites.values
+      case Benchmarks => TestGeneration.bmarkSuites.values
+      case _ => Seq()
+    }
+    if (tests == LoadMem) {
+      println(s"LOADMEM: ${loadmem}")
+      start(loadmem)
+    } else for (suite <- suites ; test  <- suite.names) {
+      val dir  = suite.dir stripPrefix "$(base_dir)/"
+      val name = suite match {
+        case t: AssemblyTestSuite  => s"${t.toolsPrefix}-${t.envName}-${test}"
+        case t: BenchmarkTestSuite => s"${test}.riscv"
+      }
+      reset(5)
+      println(s"Test: ${name}")
+      start(s"${dir}/${name}.hex")
+      val dump = Driver.createOutputFile(s"${name}.out")
+      dump write newTestOutputString
+      dump.close
+    }
+  }
 }
 
-class RocketChipTester(c: Module, args: Array[String]) extends AdvTester(c) with RocketTests { 
-  c match { 
-    case top: Top =>
-      val cmdHandler = new DecoupledSink(top.io.mem.req_cmd,
-        (cmd: MemReqCmd) => new TestMemReq(peek(cmd.addr).toInt, peek(cmd.tag), peek(cmd.rw) != 0))
-      val dataHandler = new DecoupledSink(top.io.mem.req_data,
-        (data: MemData) => new TestMemData(peek(data.data)))
-      val respHandler = new DecoupledSource(top.io.mem.resp,
-        (resp: MemResp, in: TestMemResp) => {reg_poke(resp.data, in.data) ; reg_poke(resp.tag, in.tag)})
-      val mem = new FastMem(cmdHandler.outputs, dataHandler.outputs, respHandler.inputs, 
-                            top.mifDataBeats, top.io.mem.resp.bits.data.needWidth/8)
-      val (tests, maxcycles, verbose, loadmem) = parseOpts(args)
-      val suites = tests match {
-        case ISATests   => TestGeneration.asmSuites.values
-        case Benchmarks => TestGeneration.bmarkSuites.values
-        case _ => Seq()
-      }
-      preprocessors += mem
-      cmdHandler.max_count = 1
-      cmdHandler.process()
-      dataHandler.process()
-      respHandler.process()
-      
-      def start(loadmem: String) {
-        val htif = new TesterHTIF(0, Array[String]())
-        val htifHandler = new HTIFHandler(top, htif) 
-        preprocessors += htifHandler
-        mem.loadMem(loadmem)
-        cycles = 0
-        ok &= run(top, htif, maxcycles)
-        preprocessors -= htifHandler
-      }
-
-      if (tests == LoadMem) {
-        println(s"LOADMEM: ${loadmem}")
-        start(loadmem)
-      } else for (suite <- suites ; test  <- suite.names) {
-        val dir  = suite.dir stripPrefix "$(base_dir)/"
-        val name = suite match {
-          case t: AssemblyTestSuite  => s"${t.toolsPrefix}-${t.envName}-${test}"
-          case t: BenchmarkTestSuite => s"${test}.riscv"
-        }
-        println(s"Test: ${name}")
-        start(s"${dir}/${name}.hex")
-        val dump = createOutputFile(s"${name}.out")
-        dump write newTestOutputString
-        dump.close
-      }
-    case _ => // Not Possible...
+class RocketChipTester(c: Module, args: Array[String]) extends AdvTester(c) with RocketTests {
+  val top = c.asInstanceOf[Top]
+  val (tests, maxcycles, verbose, loadmem) = parseOpts(args)
+  def start(loadmem: String) {
+    val htif = new TesterHTIF(0, Array[String]())
+    val htifHandler = new HTIFHandler(top, htif) 
+    preprocessors += htifHandler
+    mem.loadMem(loadmem)
+    cycles = 0
+    ok &= run(top, htif, maxcycles)
+    preprocessors -= htifHandler
   }
+  val cmdHandler = new DecoupledSink(top.io.mem.req_cmd,
+    (cmd: MemReqCmd) => new TestMemReq(peek(cmd.addr).toInt, peek(cmd.tag), peek(cmd.rw) != 0))
+  val dataHandler = new DecoupledSink(top.io.mem.req_data,
+    (data: MemData) => new TestMemData(peek(data.data)))
+  val respHandler = new DecoupledSource(top.io.mem.resp,
+    (resp: MemResp, in: TestMemResp) => {reg_poke(resp.data, in.data) ; reg_poke(resp.tag, in.tag)})
+  val mem = new FastMem(cmdHandler.outputs, dataHandler.outputs, respHandler.inputs, 
+                        top.mifDataBeats, top.io.mem.resp.bits.data.needWidth/8)
+  preprocessors += mem
+  cmdHandler.max_count = 1
+  cmdHandler.process()
+  dataHandler.process()
+  respHandler.process()
+  runTests(tests, loadmem)
+}
+
+class RocketChipSimTester(c: Module, args: Array[String]) 
+    extends strober.SimWrapperTester(c.asInstanceOf[TopWrapper], false, true) with RocketTests {
+  val top = c.asInstanceOf[TopWrapper]
+  val (tests, maxcycles, verbose, loadmem) = parseOpts(args)
+  def start(loadmem: String) {
+    val htif = new TesterHTIF(0, Array[String]())
+    val htifHandler = new HTIFHandler(top.target, htif) 
+    preprocessors += htifHandler
+    mem.loadMem(loadmem)
+    setTraceLen(16)
+    ok &= run(top.target, htif, maxcycles)
+    preprocessors -= htifHandler
+  }
+  val cmdHandler = new DecoupledSink(top.target.io.mem.req_cmd,
+    (cmd: MemReqCmd) => new TestMemReq(peek(cmd.addr).toInt, peek(cmd.tag), peek(cmd.rw) != 0))
+  val dataHandler = new DecoupledSink(top.target.io.mem.req_data,
+    (data: MemData) => new TestMemData(peek(data.data)))
+  val respHandler = new DecoupledSource(top.target.io.mem.resp,
+    (resp: MemResp, in: TestMemResp) => {reg_poke(resp.data, in.data) ; reg_poke(resp.tag, in.tag)})
+  val mem = new FastMem(cmdHandler.outputs, dataHandler.outputs, respHandler.inputs, 
+                        top.target.mifDataBeats, top.target.io.mem.resp.bits.data.needWidth/8)
+  preprocessors += mem
+  cmdHandler.max_count = 1
+  cmdHandler.process()
+  dataHandler.process()
+  respHandler.process()
+  runTests(tests, loadmem)
+}
+
+class RocketChipNASTIShimTester(c: Module, args: Array[String]) 
+    extends strober.NASTIShimTester(c.asInstanceOf[NASTIShim], false, true) with RocketTests {
+  val top = c.asInstanceOf[NASTIShim]
+  val (tests, maxcycles, verbose, loadmem) = parseOpts(args)
+  def start(loadmem: String) {
+    val htif = new TesterHTIF(0, Array[String]())
+    val htifHandler = new HTIFHandler(top.sim.target, htif) 
+    preprocessors += htifHandler
+    // loadMem(loadmem)
+    slowLoadMem(loadmem)
+    setTraceLen(128)
+    setMemCycles(5)
+    ok &= run(top.sim.target, htif, maxcycles)
+    preprocessors -= htifHandler
+  }
+  runTests(tests, loadmem)
 }

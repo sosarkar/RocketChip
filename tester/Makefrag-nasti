@@ -1,0 +1,28 @@
+-include $(generated_dir)/NASTIShim.$(CONFIG).d
+
+NASTIShim-compile-cpp: 
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(COMPILE_ARGS) --compileInitializationUnoptimized --noIoDebug"
+
+NASTIShim-compile-cpp-debug:
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(COMPILE_ARGS) --debug --vcd"
+
+NASTIShim-compile-v: 
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(COMPILE_ARGS) --v"
+
+NASTIShim-isa-tests:
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(TEST_ARGS) +isa +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/NASTIShim.$(CONFIG)" \
+	| tee $(log_dir)/$@.log
+
+NASTIShim-bmarks-tests:
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(TEST_ARGS) +bmarks +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/NASTIShim.$(CONFIG)" \
+	| tee $(log_dir)/$@.log
+
+$(addprefix NASTIShim-, $(rv64ui-p-asm-tests)): NASTIShim-%: $(isa_dir)/%.hex
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(TEST_ARGS) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/NASTIShim.$(CONFIG) +vpdfile=$(generated_dir)/NASTIShim-$*.vpd" \
+	| tee $(log_dir)/$@.log
+
+$(addprefix NASTIShim-, $(basic-bmark-tests)): NASTIShim-%: $(bmark_dir)/%.hex
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(TEST_ARGS) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/NASTIShim.$(CONFIG) +vpdfile=$(generated_dir)/NASTIShim-$*.vpd" \
+	| tee $(log_dir)/$@.log
