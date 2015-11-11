@@ -37,27 +37,7 @@ object BuildSettings extends Build {
       a.split(",")
     },
     htif := {
-      import scala.util.Properties.envOrElse
-      val htif_mod  = "TesterHTIF"
-      val src_dir   = "src/main/resources"
-      val java_dir  = "src/main/java"
-      val fesvr_dir = "riscv-tools/riscv-fesvr/fesvr"
-      val CXX       = envOrElse("CXX", "g++")
-      val CXXFLAGS  = envOrElse("CXXFLAGS", "") 
-      val RISCV     = envOrElse("RISCV", "")
-      val JAVA_HOME = envOrElse("JAVA_HOME", "")
-      val htif_srcs  = List(htif_mod, s"${htif_mod}_wrap")
-      val fesvr_srcs = List("htif", "htif_pthread", "context", "memif", "syscall", "device", "packet")
-      println("compile TesterHTIF:")
-      List("swig", "-c++", "-java", "-includeall", "-package", "htif", "-outdir", java_dir, 
-           "-o", s"${src_dir}/${htif_mod}_wrap.cc", s"${src_dir}/${htif_mod}.i").mkString(" ").!
-      htif_srcs foreach (src => List(CXX, CXXFLAGS, "-c", "-fPIC", "-std=c++11", 
-        s"-I${src_dir}", "-Icsrc", s"-I${RISCV}/include", s"-I${JAVA_HOME}/include",
-        "-o", s"${src_dir}/${src}.o", s"${src_dir}/${src}.cc").mkString(" ").!)
-      // assume riscv-fesvr is compiled
-      (List(CXX, "-shared", "-o", s"${src_dir}/libhtif.so") ++
-       (htif_srcs map (src => s"${src_dir}/${src}.o")) ++ 
-       (fesvr_srcs map (src => s"${fesvr_dir}/${src}.o"))).mkString(" ").!
+      s"make -C src/main/resources BASE_DIR=${baseDirectory.value}" ! 
     },
     unmanagedSourceDirectories in Compile ++= addons.value.map(baseDirectory.value / _ / "src/main/scala"),
     mainClass in (Compile, run) := Some("rocketchip.TestGenerator"),

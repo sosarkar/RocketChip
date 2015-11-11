@@ -1,28 +1,30 @@
--include $(generated_dir)/TopWrapper.$(CONFIG).d
+-include $(generated_dir)/$(MODEL)Wrapper.$(SIMCONFIG).d
 
-TopWrapper-compile-cpp: 
-	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run TopWrapper $(COMPILE_ARGS) --compileInitializationUnoptimized --noIoDebug"
+$(MODEL)-sim-compile-cpp: 
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL)Wrapper $(COMPILE_ARGS) --configInstance $(PROJECT).$(SIMCONFIG) --compileInitializationUnoptimized --noIoDebug"
 
-TopWrapper-compile-cpp-debug:
-	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run TopWrapper $(COMPILE_ARGS) --debug --vcd"
+$(MODEL)-sim-compile-cpp-debug:
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL)Wrapper $(COMPILE_ARGS) --configInstance $(PROJECT).$(SIMCONFIG) --debug --vcd"
 
-TopWrapper-compile-v: 
-	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run TopWrapper $(COMPILE_ARGS) --v"
+$(MODEL)-sim-compile-v: 
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL)Wrapper $(COMPILE_ARGS) --configInstance $(PROJECT).$(SIMCONFIG) --v"
 
-TopWrapper-isa-tests:
+$(MODEL)-sim-isa-tests:
 	mkdir -p $(log_dir)
-	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run TopWrapper $(TEST_ARGS) +isa +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/TopWrapper.$(CONFIG)" \
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL)Wrapper $(TEST_ARGS) --configInstance $(PROJECT).$(SIMCONFIG) +isa +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)Wrapper.$(SIMCONFIG)" \
 	| tee $(log_dir)/$@.log
 
-TopWrapper-bmarks-tests:
+$(MODEL)-sim-bmarks-tests:
 	mkdir -p $(log_dir)
-	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run TopWrapper $(TEST_ARGS) +bmarks +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/TopWrapper.$(CONFIG)" \
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL)Wrapper $(TEST_ARGS) --configInstance $(PROJECT).$(SIMCONFIG) +bmarks +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)Wrapper.$(SIMCONFIG)" \
 	| tee $(log_dir)/$@.log
 
-$(addprefix TopWrapper-, $(rv64ui-p-asm-tests)): TopWrapper-%: $(isa_dir)/%.hex
-	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run TopWrapper $(TEST_ARGS) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/TopWrapper.$(CONFIG) +vpdfile=$(generated_dir)/TopWrapper-$*.vpd" \
+$(addprefix $(MODEL)-sim-, $(rv64ui-p-asm-tests)): $(MODEL)-sim-%: $(isa_dir)/%.hex
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL)Wrapper $(TEST_ARGS) --configInstance $(PROJECT).$(SIMCONFIG) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)Wrapper.$(SIMCONFIG) +vpdfile=$(generated_dir)/$(MODEL)Wrapper-$*.vpd" \
 	| tee $(log_dir)/$@.log
 
-$(addprefix TopWrapper-, $(basic-bmark-tests)): TopWrapper-%: $(bmark_dir)/%.hex
-	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run TopWrapper $(TEST_ARGS) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/TopWrapper.$(CONFIG) +vpdfile=$(generated_dir)/TopWrapper-$*.vpd" \
+$(addprefix $(MODEL)-sim-, $(basic-bmark-tests)): $(MODEL)-sim-%: $(bmark_dir)/%.hex
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL)Wrapper $(TEST_ARGS) --configInstance $(PROJECT).$(SIMCONFIG) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)Wrapper.$(SIMCONFIG) +vpdfile=$(generated_dir)/$(MODEL)Wrapper-$*.vpd" \
 	| tee $(log_dir)/$@.log

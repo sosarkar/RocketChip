@@ -99,21 +99,19 @@ trait RocketTests extends AdvTests {
     private val htif_out_bits = Array.fill(htif_bytes)(0.toByte)
     def process {
       import java.nio.ByteBuffer
-      if (peek(top.io.host.clk_edge)) {
-        if (peek(top.io.host.in.ready) || !htif_in_valid) {
-          htif_in_valid = htif.recv_nonblocking(htif_in_bits, htif_bytes)
-        }
-        reg_poke(top.io.host.in.valid, int(htif_in_valid))
-        reg_poke(top.io.host.in.bits,  int(ByteBuffer.wrap(htif_in_bits.reverse).getShort))
-        if (peek(top.io.host.out.valid)) {
-          val out_bits = peek(top.io.host.out.bits)
-          (0 until htif_out_bits.size) foreach (htif_out_bits(_) = 0)
-          out_bits.toByteArray.reverse.slice(0, htif_bytes).zipWithIndex foreach {
-            case (bit, i) => htif_out_bits(i) = bit }
-          htif.send(htif_out_bits, htif_bytes)
-        }
-        reg_poke(top.io.host.out.ready, 1)
+      if (peek(top.io.host.in.ready) || !htif_in_valid) {
+        htif_in_valid = htif.recv_nonblocking(htif_in_bits, htif_bytes)
       }
+      reg_poke(top.io.host.in.valid, int(htif_in_valid))
+      reg_poke(top.io.host.in.bits,  int(ByteBuffer.wrap(htif_in_bits.reverse).getShort))
+      if (peek(top.io.host.out.valid)) {
+        val out_bits = peek(top.io.host.out.bits)
+        (0 until htif_out_bits.size) foreach (htif_out_bits(_) = 0)
+        out_bits.toByteArray.reverse.slice(0, htif_bytes).zipWithIndex foreach {
+          case (bit, i) => htif_out_bits(i) = bit }
+        htif.send(htif_out_bits, htif_bytes)
+      }
+      reg_poke(top.io.host.out.ready, 1)
     }
   }
 

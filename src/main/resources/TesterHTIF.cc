@@ -1,16 +1,12 @@
 #include "TesterHTIF.h"
 
 TesterHTIF::TesterHTIF(int argc, char** argv):
-  htif(new htif_emulator_t(std::vector<std::string>(argv, argv+argc)))
+  htif(new htif_pthread_t(std::vector<std::string>(argv, argv+argc)))
 {
 }
 
 TesterHTIF::~TesterHTIF() {
   delete htif;
-}
-
-void TesterHTIF::stop() {
-  htif->stop();
 }
 
 bool TesterHTIF::done() {

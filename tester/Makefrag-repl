@@ -1,3 +1,7 @@
+$(generated_dir)/Top.sample: $(base_dir)/strober-fpga/results/Top.sample
+	mkdir -p $(generated_dir)
+	cp $< $@
+
 $(MODEL)-replay: $(generated_dir)/Top.sample 
-	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) +sample=$< --testCommand $(generated_dir)/$(MODEL).$(CONFIG) +vpdfile=$(generated_dir)/$(MODEL)-replay.vpd" \
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +sample=$< --testCommand $(generated_dir)/$(MODEL).$(CONFIG) +vpdfile=$(generated_dir)/$(MODEL)-replay.vpd" \
 	| tee $(log_dir)/$@.log
