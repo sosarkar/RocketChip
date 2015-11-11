@@ -247,10 +247,10 @@ class RocketChipNASTIShimTester(c: Module, args: Array[String])
     preprocessors += htifHandler
     // loadMem(loadmem)
     slowLoadMem(loadmem)
-    setTraceLen(128)
-    setMemCycles(5)
     ok &= run(top.sim.target, htif, maxcycles)
     preprocessors -= htifHandler
   }
+  setTraceLen(128)
+  setMemCycles(5)
   runTests(tests, loadmem)
 }
