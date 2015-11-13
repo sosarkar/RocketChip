@@ -1,12 +1,12 @@
 -include $(generated_dir)/$(MODEL).$(CONFIG).d
 
-$(MODEL)-compile-cpp: 
+$(MODEL)-compile-cpp: $(chisel_srcs) 
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(COMPILE_ARGS) --configInstance $(PROJECT).$(CONFIG) --compileInitializationUnoptimized --noIoDebug"
 
-$(MODEL)-compile-cpp-debug:
+$(MODEL)-compile-cpp-debug: $(chisel_srcs)
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(COMPILE_ARGS) --configInstance $(PROJECT).$(CONFIG) --debug --vcd"
 
-$(MODEL)-compile-v: 
+$(MODEL)-compile-v: $(chisel_srcs)
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(COMPILE_ARGS) --configInstance $(PROJECT).$(CONFIG) --v"
 
 $(MODEL)-isa-tests:

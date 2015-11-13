@@ -1,12 +1,12 @@
 -include $(generated_dir)/NASTIShim.$(NASTICONFIG).d
 
-$(MODEL)-nasti-compile-cpp: 
+$(MODEL)-nasti-compile-cpp: $(chisel_srcs) 
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(COMPILE_ARGS) --configInstance $(PROJECT).$(NASTICONFIG) --compileInitializationUnoptimized --noIoDebug"
 
-$(MODEL)-nasti-compile-cpp-debug:
+$(MODEL)-nasti-compile-cpp-debug: $(chisel_srcs)
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(COMPILE_ARGS) --configInstance $(PROJECT).$(NASTICONFIG) --debug --vcd"
 
-$(MODEL)-nasti-compile-v: 
+$(MODEL)-nasti-compile-v: $(chisel_srcs)
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(COMPILE_ARGS) --configInstance $(PROJECT).$(NASTICONFIG) --v"
 
 $(MODEL)-nasti-isa-tests:

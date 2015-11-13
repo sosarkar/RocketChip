@@ -1,7 +1,11 @@
-$(generated_dir)/Top.sample: $(base_dir)/strober-fpga/results/Top.sample
+$(generated_dir)/$(MODEL).sample: $(base_dir)/strober-fpga/results/$(MODEL).sample
 	mkdir -p $(generated_dir)
 	cp $< $@
 
-$(MODEL)-replay: $(generated_dir)/Top.sample 
-	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +sample=$< --testCommand $(generated_dir)/$(MODEL).$(CONFIG) +vpdfile=$(generated_dir)/$(MODEL)-replay.vpd" \
+$(MODEL)-replay: $(generated_dir)/$(MODEL).sample 
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +sample=$< --testCommand $(generated_dir)/$(MODEL).$(CONFIG) +vpdfile=$(generated_dir)/$@.vpd" \
+	| tee $(log_dir)/$@.log
+
+$(MODEL)-replay-rtl: $(generated_dir)/$(MODEL).sample 
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) --noInlineMem +sample=$< --testCommand $(tester_dir)/vcs-sim-rtl/$(MODEL).$(CONFIG) +vpdfile=$(generated_dir)/$@.vpd" \
 	| tee $(log_dir)/$@.log

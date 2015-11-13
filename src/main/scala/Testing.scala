@@ -8,7 +8,7 @@ abstract class RocketTestSuite {
   val dir: String
   val makeTargetName: String
   val names: Set[String]
-  def postScript = s"""
+  def postScript = if (Driver.isGenHarness && Driver.isCompiling || Driver.isTesting) "" else s"""
 
 $$(addprefix $$(output_dir)/, $$(addsuffix .hex, $$($makeTargetName))): $$(output_dir)/%.hex: $dir/%.hex
 \tmkdir -p $$(output_dir)
@@ -55,14 +55,14 @@ object TestGeneration extends FileSystemUtilities{
     def gen(kind: String, s: Seq[RocketTestSuite]) = {
       if(s.length > 0) {
         val targets = s.map(t => s"$$(${t.makeTargetName})").mkString(" ") 
-        s.map(_.toString).mkString("\n") + s"""
+        s.map(_.toString).mkString("\n") + (if (Driver.isGenHarness && Driver.isCompiling || Driver.isTesting) "" else s"""
 run-$kind-tests: $$(addprefix $$(output_dir)/, $$(addsuffix .out, $targets))
 \t@echo; perl -ne 'print "  [$$$$1] $$$$ARGV \\t$$$$2\\n" if /\\*{3}(.{8})\\*{3}(.*)/' $$^; echo;
 run-$kind-tests-debug: $$(addprefix $$(output_dir)/, $$(addsuffix .vpd, $targets))
 \t@echo; perl -ne 'print "  [$$$$1] $$$$ARGV \\t$$$$2\\n" if /\\*{3}(.{8})\\*{3}(.*)/' $$(patsubst %.vpd,%.out,$$^); echo;
 run-$kind-tests-fast: $$(addprefix $$(output_dir)/, $$(addsuffix .run, $targets))
 \t@echo; perl -ne 'print "  [$$$$1] $$$$ARGV \\t$$$$2\\n" if /\\*{3}(.{8})\\*{3}(.*)/' $$^; echo;
-"""
+""")
       } else { "\n" }
     }
 

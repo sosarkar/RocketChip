@@ -5,7 +5,8 @@ generated_dir = $(tester_dir)/generated-src
 isa_dir       = $(base_dir)/riscv-tools/riscv-tests/isa
 bmark_dir     = $(base_dir)/riscv-tools/riscv-tests/benchmarks
 
-CONFIG      ?= DefaultFPGASmallConfig
+CONFIG      ?= DefaultFPGAConfig
+#CONFIG      ?= DefaultFPGASmallConfig
 SIMCONFIG   ?= RocketSimConfig
 NASTICONFIG ?= RocketNastiConfig
 
