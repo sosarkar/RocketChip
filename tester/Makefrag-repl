@@ -1,11 +1,35 @@
+# Samples
 $(generated_dir)/$(MODEL).sample: $(base_dir)/strober-fpga/results/$(MODEL).sample
 	mkdir -p $(generated_dir)
 	cp $< $@
 
+# Replay on Chisel emulator or VCS
 $(MODEL)-replay: $(generated_dir)/$(MODEL).sample 
+	mkdir -p $(log_dir)
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +sample=$< --testCommand $(generated_dir)/$(MODEL).$(CONFIG) +vpdfile=$(generated_dir)/$@.vpd" \
 	| tee $(log_dir)/$@.log
 
-$(MODEL)-replay-rtl: $(generated_dir)/$(MODEL).sample 
-	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) --noInlineMem +sample=$< --testCommand $(tester_dir)/vcs-sim-rtl/$(MODEL).$(CONFIG) +vpdfile=$(generated_dir)/$@.vpd" \
+# Replay on VCS RTL Simulation
+$(MODEL)-replay-rtl: $(generated_dir)/$(MODEL).sample $(vcs_sim_rtl_dir)/simv-$(CONFIG)
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) --noInlineMem +sample=$< --testCommand $(word 2, $^) +vpdfile=$(generated_dir)/$@.vpd" \
+	| tee $(log_dir)/$@.log
+
+# Name Mapping
+$(vcs_sim_gl_syn_dir)/$(MODEL).$(CONFIG).match:
+	cd $(vcs_sim_gl_syn_dir) && $(MAKE) $(notdir $@) CONFIG=$(CONFIG)
+
+$(vcs_sim_gl_par_dir)/$(MODEL).$(CONFIG).match:
+	cd $(vcs_sim_gl_par_dir) && $(MAKE) $(notdir $@) CONFIG=$(CONFIG)
+
+# Replay on Post-Synthesis Simulation
+$(MODEL)-replay-gl-syn: $(generated_dir)/$(MODEL).sample $(vcs_sim_gl_syn_dir)/$(MODEL).$(CONFIG).match $(vcs_sim_gl_syn_dir)/simv-$(CONFIG)
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) --noInlineMem +sample=$< +match=$(word 2, $^) --testCommand $(word 3, $^) +vcs+initreg+0 +vpdfile=$(generated_dir)/$@.vpd" \
+	| tee $(log_dir)/$@.log
+
+# Replay on Post-Place-and-Route Simulation
+$(MODEL)-replay-gl-par: $(generated_dir)/$(MODEL).sample $(vcs_sim_gl_par_dir)/$(MODEL).$(CONFIG).match $(vcs_sim_gl_par_dir)/simv-$(CONFIG)
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) --noInlineMem +sample=$< +match=$(word 2, $^) --testCommand $(word 3, $^) +vpdfile=$(generated_dir)/$@.vpd" \
 	| tee $(log_dir)/$@.log

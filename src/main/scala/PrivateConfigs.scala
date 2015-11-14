@@ -76,6 +76,6 @@ class NastiConfig extends ChiselConfig(
 
 // Strober
 class RocketSimConfig extends ChiselConfig(new DefaultFPGASmallConfig ++ new SimConfig)
-class RocketNastiConfig extends ChiselConfig(new NastiConfig ++ new DefaultFPGASmallConfig ++ new SimConfig)
+class RocketNastiConfig extends ChiselConfig(new NastiConfig ++ new RocketSimConfig)
 class BOOMSimConfig extends ChiselConfig(new BOOMFPGAConfig ++ new SimConfig)
-class BOOMNastiConfig extends ChiselConfig(new NastiConfig ++ new BOOMFPGAConfig ++ new SimConfig)
+class BOOMNastiConfig extends ChiselConfig(new NastiConfig ++ new BOOMSimConfig)

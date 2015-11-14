@@ -1,0 +1,80 @@
+# Build VCS Simulators
+$(vcs_sim_rtl_dir)/simv-$(CONFIG):
+	make -C $(vcs_sim_rtl_dir) CONFIG=$(CONFIG)
+
+$(vcs_sim_gl_syn_dir)/simv-$(CONFIG):
+	make -C $(vcs_sim_gl_syn_dir) CONFIG=$(CONFIG)
+
+$(vcs_sim_gl_par_dir)/simv-$(CONFIG):
+	make -C $(vcs_sim_gl_par_dir) CONFIG=$(CONFIG)
+
+# Run VCS RTL Simultion
+$(MODEL)-rtl-isa-tests: $(vcs_sim_rtl_dir)/simv-$(CONFIG) $(isa_hex)
+	mkdir -p $(log_dir)
+        cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +isa +max-cycles=$(timeout_cycles) --testCommand $<" \
+        | tee $(log_dir)/$@.log
+
+$(MODEL)-rtl-bmark-tests: $(vcs_sim_rtl_dir)/simv-$(CONFIG) $(bmark_hex)
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +bmarks +max-cycles=$(timeout_cycles) --testCommand $<" \
+	| tee $(log_dir)/$@.log
+
+$(addprefix $(MODEL)-rtl-, $(rv64ui-p-asm-tests)): $(MODEL)-rtl-%: $(isa_dir)/%.hex $(vcs_sim_rtl_dir)/simv-$(CONFIG)
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(word 2, $^) +vpdfile=$(vcs_sim_rtl_dir)/$(MODEL)-$*.vpd" \
+	| tee $(log_dir)/$@.log
+
+$(addprefix $(MODEL)-rtl-, $(basic-bmark-tests)): $(MODEL)-rtl-%: $(bmark_dir)/%.hex $(vcs_sim_rtl_dir)/simv-$(CONFIG)
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(word 2, $^) +vpdfile=$(vcs_sim_rtl_dir)/$(MODEL)-$*.vpd" \
+	| tee $(log_dir)/$@.log
+
+# Run VCS Post-Synthesis Simulation
+$(MODEL)-gl-syn-isa-tests: $(vcs_sim_gl_syn_dir)/simv-$(CONFIG) $(isa_hex)  
+	mkdir -p $(log_dir)
+        cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +isa +max-cycles=$(timeout_cycles) --testCommand $<" \
+        | tee $(log_dir)/$@.log
+
+$(MODEL)-gl-syn-bmark-tests: $(vcs_sim_gl_syn_dir)/simv-$(CONFIG) $(bmark_hex)
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +bmarks +max-cycles=$(timeout_cycles) --testCommand $<"
+	| tee $(log_dir)/$@.log
+
+$(addprefix $(MODEL)-gl-syn-, $(rv64ui-p-asm-tests)): $(MODEL)-gl-syn-%: $(isa_dir)/%.hex $(vcs_sim_gl_syn_dir)/simv-$(CONFIG)
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(word 2, $^) +vpdfile=$(vcs_sim_gl_syn_dir)/$(MODEL)-$*.vpd" \
+	| tee $(log_dir)/$@.log
+
+$(addprefix $(MODEL)-gl-syn-, $(basic-bmark-tests)): $(MODEL)-gl-syn-%: $(bmark_dir)/%.hex $(vcs_sim_gl_syn_dir)/simv-$(CONFIG)
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(word 2, $^) +vpdfile=$(vcs_sim_gl_syn_dir)/$(MODEL)-$*.vpd" \
+	| tee $(log_dir)/$@.log
+
+# Run VCS Post-Place-and-Route Simulation
+$(MODEL)-gl-par-isa-tests: $(vcs_sim_gl_par_dir)/simv-$(CONFIG) $(isa_hex)
+	mkdir -p $(log_dir)
+        cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +isa +max-cycles=$(timeout_cycles) --testCommand $<" \
+        | tee $(log_dir)/$@.log
+
+$(MODEL)-gl-par-bmark-tests: $(vcs_sim_gl_par_dir)/simv-$(CONFIG) $(bmark_hex)
+	mkdir -p $(log_dir)
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +bmarks +max-cycles=$(timeout_cycles) --testCommand $<" \
+	| tee $(log_dir)/$@.log
+
+$(addprefix $(MODEL)-gl-par-, $(rv64ui-p-asm-tests)): $(MODEL)-gl-par-%: $(isa_dir)/%.hex $(vcs_sim_gl_par_dir)/simv-$(CONFIG)
+	mkdir -p $(log_dir)
+	rm -f $(vcs_sim_gl_par_dir)/$(MODEL)-$*-pipe.vcd
+	cd $(base_dir) && vcd2saif \
+	-input $(vcs_sim_gl_par_dir)/$(MODEL)-$*-pipe.vcd \
+	-output $(vcs_sim_gla_par_dir)/$(MODEL)-$*.saif \
+	-pipe "$(SBT) \"project $(PROJECT)\" \"run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(word 2, $^) +vcdfile=$(vcs_sim_gl_par_dir)/$(MODEL)-$*-pipe.vcd +vpdfile=$(vcs_sim_gl_par_dir)/$(MODEL)-$*.vpd\"" \
+	| tee $(log_dir)/$@.log
+
+$(addprefix $(MODEL)-gl-par-, $(basic-bmark-tests)): $(MODEL)-gl-par-%: $(bmark_dir)/%.hex $(vcs_sim_gl_par_dir)/simv-$(CONFIG)
+	mkdir -p $(log_dir)
+	rm -f $(vcs_sim_gl_par_dir)/$(MODEL)-$*-pipe.vcd
+	cd $(base_dir) && vcd2saif \
+	-input $(vcs_sim_gl_par_dir)/$(MODEL)-$*-pipe.vcd \
+	-output $(vcs_sim_gla_par_dir)/$(MODEL)-$*.saif \
+	-pipe "$(SBT) \"project $(PROJECT)\" \"run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(word 2, $^) +vcdfile=$(vcs_sim_gl_par_dir)/$(MODEL)-$*-pipe.vcd +vpdfile=$(vcs_sim_gl_par_dir)/$(MODEL)-$*.vpd\"" \
+	| tee $(log_dir)/$@.log

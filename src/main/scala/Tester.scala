@@ -254,3 +254,16 @@ class RocketChipNASTIShimTester(c: Module, args: Array[String])
   setMemCycles(5)
   runTests(tests, loadmem)
 }
+
+class RocketChipReplay(c: Module, args: Seq[String]) extends strober.Replay(c.asInstanceOf[Top], args) {
+  override def expect(data: Bits, expected: BigInt) = {
+    // Sad reality: Design Compiler optimization prunes the registers 
+    // directrly connected to the tag output, causing output value descrepancy...
+    // Thus, check only when the memory request is valid
+    val top = c.asInstanceOf[Top]
+    if (data eq top.io.mem.req_cmd.bits.tag)
+      peek(top.io.mem.req_cmd.valid) == 0 || super.expect(data, expected)
+    else 
+      super.expect(data, expected)
+  }
+}

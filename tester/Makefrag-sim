@@ -1,5 +1,4 @@
--include $(generated_dir)/$(MODEL)Wrapper.$(SIMCONFIG).d
-
+# Rules for SimWrapper
 $(MODEL)-sim-compile-cpp: 
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL)Wrapper $(COMPILE_ARGS) --configInstance $(PROJECT).$(SIMCONFIG) --compileInitializationUnoptimized --noIoDebug"
 
@@ -9,12 +8,12 @@ $(MODEL)-sim-compile-cpp-debug:
 $(MODEL)-sim-compile-v: 
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL)Wrapper $(COMPILE_ARGS) --configInstance $(PROJECT).$(SIMCONFIG) --v"
 
-$(MODEL)-sim-isa-tests:
+$(MODEL)-sim-isa-tests: $(isa_hex)
 	mkdir -p $(log_dir)
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL)Wrapper $(TEST_ARGS) --configInstance $(PROJECT).$(SIMCONFIG) +isa +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)Wrapper.$(SIMCONFIG)" \
 	| tee $(log_dir)/$@.log
 
-$(MODEL)-sim-bmarks-tests:
+$(MODEL)-sim-bmark-tests: $(bmark_hex)
 	mkdir -p $(log_dir)
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL)Wrapper $(TEST_ARGS) --configInstance $(PROJECT).$(SIMCONFIG) +bmarks +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)Wrapper.$(SIMCONFIG)" \
 	| tee $(log_dir)/$@.log

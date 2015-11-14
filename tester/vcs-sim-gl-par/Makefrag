@@ -1,0 +1,34 @@
+sim_vsrcs = \
+	$(cells_v) \
+	$(srams_v) \
+	$(result_dir)/$(MODEL).output.v \
+	$(generated_dir)/$(MODEL).$(CONFIG)-harness.v
+
+vpi_objs = $(generated_dir)/vpi.o
+tab_file = $(generated_dir)/vpi.tab
+
+CXX ?= g++
+CXXFLAGS := $(CXXFLAGS) -O2 -I$(VCS_HOME)/include -I$(generated_dir) -fPIC -std=c++11 
+
+VCS = vcs -full64
+
+VCS_OPTS = -quiet -timescale=1ns/1ps -debug_pp -Mdir=simv-$(CONFIG).csrc -P $(tab_file) \
+	+rad +v2k +vpi +define+CLOCK_PERIOD=$(clock_period) +vcs+initreg+random +evalorder \
+	+neg_tchk +sdfverbose -sdf max:$(MODEL):$(result_dir)/$(MODEL).output.sdf +no_notifier
+
+$(generated_dir)/$(MODEL).$(CONFIG)-harness.v: $(generated_dir)/$(MODEL).$(CONFIG).v
+
+$(result_dir)/$(MODEL).output.v:
+        cd $(icc_dir) && make CONFIG=$(CONFIG)
+
+$(report_dir)/$(MODEL).fmv_matched_points.rpt:
+	cd $(icc_dir) && make icc-fm CONFIG=$(CONFIG)
+
+$(vpi_objs): %.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+simv-$(CONFIG): $(sim_vsrcs) $(vpi_objs)
+	$(VCS) $(VCS_OPTS) -use_vpiobj $(vpi_objs) -o $@ $(sim_vsrcs)
+
+$(MODEL).$(CONFIG).match: $(report_dir)/$(MODEL).fmv_matched_points.rpt
+	$(tester_dir)/translator.py --output $@ --match $<

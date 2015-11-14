@@ -1,20 +1,19 @@
--include $(generated_dir)/$(MODEL).$(CONFIG).d
-
+# Rules for RocketChip
 $(MODEL)-compile-cpp: $(chisel_srcs) 
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(COMPILE_ARGS) --configInstance $(PROJECT).$(CONFIG) --compileInitializationUnoptimized --noIoDebug"
 
 $(MODEL)-compile-cpp-debug: $(chisel_srcs)
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(COMPILE_ARGS) --configInstance $(PROJECT).$(CONFIG) --debug --vcd"
 
-$(MODEL)-compile-v: $(chisel_srcs)
+$(MODEL)-compile-v $(generated_dir)/$(MODEL).$(CONFIG).d: $(chisel_srcs)
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(COMPILE_ARGS) --configInstance $(PROJECT).$(CONFIG) --v"
 
-$(MODEL)-isa-tests:
+$(MODEL)-isa-tests: $(isa_hex)
 	mkdir -p $(log_dir)
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +isa +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL).$(CONFIG)" \
 	| tee $(log_dir)/$@.log
 
-$(MODEL)-bmarks-tests:
+$(MODEL)-bmark-tests: $(bmark_hex)
 	mkdir -p $(log_dir)
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) +bmarks +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL).$(CONFIG)" \
 	| tee $(log_dir)/$@.log

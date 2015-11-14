@@ -1,5 +1,4 @@
--include $(generated_dir)/NASTIShim.$(NASTICONFIG).d
-
+# Rules for NASTIShim
 $(MODEL)-nasti-compile-cpp: $(chisel_srcs) 
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(COMPILE_ARGS) --configInstance $(PROJECT).$(NASTICONFIG) --compileInitializationUnoptimized --noIoDebug"
 
@@ -9,22 +8,22 @@ $(MODEL)-nasti-compile-cpp-debug: $(chisel_srcs)
 $(MODEL)-nasti-compile-v: $(chisel_srcs)
 	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(COMPILE_ARGS) --configInstance $(PROJECT).$(NASTICONFIG) --v"
 
-$(MODEL)-nasti-isa-tests:
+$(MODEL)-nasti-isa-tests: $(isa_hex)
 	mkdir -p $(log_dir)
-	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(TEST_ARGS) --configInstance $(PROJECT).$(NASTICONFIG) +isa +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)NASTIShim.$(NASTICONFIG) +vpdfile=$(generated_dir)/$(MODEL)-nasti-isa.vpd" \
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(TEST_ARGS) --configInstance $(PROJECT).$(NASTICONFIG) +isa +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)NASTIShim.$(NASTICONFIG) +vcs+initreg+0 +vpdfile=$(generated_dir)/$(MODEL)-nasti-isa.vpd" \
 	| tee $(log_dir)/$@.log
 
-$(MODEL)-nasti-bmarks-tests:
+$(MODEL)-nasti-bmark-tests: $(bmark_hex)
 	mkdir -p $(log_dir)
-	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(TEST_ARGS) --configInstance $(PROJECT).$(NASTICONFIG) +bmarks +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)NASTIShim.$(NASTICONFIG) +vpdfile=$(generated_dir)/$(MODEL)-nasti-bmarks.vpd" \
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(TEST_ARGS) --configInstance $(PROJECT).$(NASTICONFIG) +bmarks +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)NASTIShim.$(NASTICONFIG) +vcs+initreg+0 +vpdfile=$(generated_dir)/$(MODEL)-nasti-bmarks.vpd" \
 	| tee $(log_dir)/$@.log
 
 $(addprefix $(MODEL)-nasti-, $(rv64ui-p-asm-tests)): $(MODEL)-nasti-%: $(isa_dir)/%.hex
 	mkdir -p $(log_dir)
-	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(TEST_ARGS) --configInstance $(PROJECT).$(NASTICONFIG) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)NASTIShim.$(NASTICONFIG) +vpdfile=$(generated_dir)/$(MODEL)-nasti-$*.vpd" \
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(TEST_ARGS) --configInstance $(PROJECT).$(NASTICONFIG) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)NASTIShim.$(NASTICONFIG) +vcs+initreg+0 +vpdfile=$(generated_dir)/$(MODEL)-nasti-$*.vpd" \
 	| tee $(log_dir)/$@.log
 
 $(addprefix $(MODEL)-nasti-, $(basic-bmark-tests)): $(MODEL)-nasti-%: $(bmark_dir)/%.hex
 	mkdir -p $(log_dir)
-	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(TEST_ARGS) --configInstance $(PROJECT).$(NASTICONFIG) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)NASTIShim.$(NASTICONFIG) +vpdfile=$(generated_dir)/$(MODEL)-nasti-$*.vpd" \
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run NASTIShim $(TEST_ARGS) --configInstance $(PROJECT).$(NASTICONFIG) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)NASTIShim.$(NASTICONFIG) +vcs+initreg+0 +vpdfile=$(generated_dir)/$(MODEL)-nasti-$*.vpd" \
 	| tee $(log_dir)/$@.log
