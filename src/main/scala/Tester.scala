@@ -7,6 +7,7 @@ import Chisel.AdvTester._
 import htif._
 import junctions.{MemReqCmd, MemData, MemResp}
 import scala.collection.mutable.{Queue => ScalaQueue}
+import java.nio.ByteBuffer
 
 // Memory
 case class TestMemReq(addr: Int, tag: BigInt, rw: Boolean) {
@@ -98,7 +99,6 @@ trait RocketTests extends AdvTests {
     private val htif_in_bits  = Array.fill(htif_bytes)(0.toByte)
     private val htif_out_bits = Array.fill(htif_bytes)(0.toByte)
     def process {
-      import java.nio.ByteBuffer
       if (peek(top.io.host.in.ready) || !htif_in_valid) {
         htif_in_valid = htif.recv_nonblocking(htif_in_bits, htif_bytes)
       }
@@ -149,7 +149,7 @@ trait RocketTests extends AdvTests {
     val simSpeed = cycles / simTime
     val reason = if (cycles < maxcycles) "tohost = " + htif.exit_code else "timeout"
     println("*** %s *** (%s) after %d simulation cycles".format(
-            if (ok) "PASSED" else "FAILED", reason, cycles))
+            if (ok && htif.exit_code == 0) "PASSED" else "FAILED", reason, cycles))
     println("Time elapsed = %.1f s, Simulation Speed = %.2f Hz".format(simTime, simSpeed))
     ok
   }
@@ -210,25 +210,25 @@ class RocketChipTester(c: Module, args: Array[String]) extends AdvTester(c) with
 
 class RocketChipSimTester(c: Module, args: Array[String]) 
     extends strober.SimWrapperTester(c.asInstanceOf[TopWrapper], false, true) with RocketTests {
-  val top = c.asInstanceOf[TopWrapper]
+  val top = c.asInstanceOf[TopWrapper].target
   val (tests, maxcycles, verbose, loadmem) = parseOpts(args)
   def start(loadmem: String) {
     val htif = new TesterHTIF(0, Array[String]())
-    val htifHandler = new HTIFHandler(top.target, htif) 
+    val htifHandler = new HTIFHandler(top, htif) 
     preprocessors += htifHandler
     mem.loadMem(loadmem)
     setTraceLen(16)
-    ok &= run(top.target, htif, maxcycles)
+    ok &= run(top, htif, maxcycles)
     preprocessors -= htifHandler
   }
-  val cmdHandler = new DecoupledSink(top.target.io.mem.req_cmd,
+  val cmdHandler = new DecoupledSink(top.io.mem.req_cmd,
     (cmd: MemReqCmd) => new TestMemReq(peek(cmd.addr).toInt, peek(cmd.tag), peek(cmd.rw) != 0))
-  val dataHandler = new DecoupledSink(top.target.io.mem.req_data,
+  val dataHandler = new DecoupledSink(top.io.mem.req_data,
     (data: MemData) => new TestMemData(peek(data.data)))
-  val respHandler = new DecoupledSource(top.target.io.mem.resp,
+  val respHandler = new DecoupledSource(top.io.mem.resp,
     (resp: MemResp, in: TestMemResp) => {reg_poke(resp.data, in.data) ; reg_poke(resp.tag, in.tag)})
   val mem = new FastMem(cmdHandler.outputs, dataHandler.outputs, respHandler.inputs, 
-                        top.target.mifDataBeats, top.target.io.mem.resp.bits.data.needWidth/8)
+                        top.mifDataBeats, top.io.mem.resp.bits.data.needWidth/8)
   preprocessors += mem
   cmdHandler.max_count = 1
   cmdHandler.process()
@@ -239,19 +239,60 @@ class RocketChipSimTester(c: Module, args: Array[String])
 
 class RocketChipNASTIShimTester(c: Module, args: Array[String]) 
     extends strober.NASTIShimTester(c.asInstanceOf[NASTIShim], false, true) with RocketTests {
-  val top = c.asInstanceOf[NASTIShim]
+  val top = c.asInstanceOf[NASTIShim].sim.target
   val (tests, maxcycles, verbose, loadmem) = parseOpts(args)
+  val stepSize = 128
   def start(loadmem: String) {
     val htif = new TesterHTIF(0, Array[String]())
-    val htifHandler = new HTIFHandler(top.sim.target, htif) 
-    preprocessors += htifHandler
+    val htif_bytes = top.io.host.in.bits.needWidth/8
+    var htif_in_valid = false
+    val htif_in_bits  = Array.fill(htif_bytes)(0.toByte)
+    val htif_out_bits = Array.fill(htif_bytes)(0.toByte)
+    require(traceLen % stepSize == 0)
     // loadMem(loadmem)
     slowLoadMem(loadmem)
-    ok &= run(top.sim.target, htif, maxcycles)
-    preprocessors -= htifHandler
+    val startTime = System.nanoTime
+    do {
+      assert(t % stepSize == 0)
+      var stepped = 0
+      do {
+        if (peek(top.io.host.in.ready) || !htif_in_valid) {
+          htif_in_valid = htif.recv_nonblocking(htif_in_bits, htif_bytes)
+          if (htif_in_valid) {
+            reg_poke(top.io.host.in.valid, int(htif_in_valid))
+            reg_poke(top.io.host.in.bits,  int(ByteBuffer.wrap(htif_in_bits.reverse).getShort))
+            step(1)
+            stepped += 1
+            if (stepped >= stepSize) stepped -= stepSize
+          }
+        }
+        if (peek(top.io.host.out.valid)) {
+          val out_bits = peek(top.io.host.out.bits)
+          (0 until htif_out_bits.size) foreach (htif_out_bits(_) = 0)
+          out_bits.toByteArray.reverse.slice(0, htif_bytes).zipWithIndex foreach {
+            case (bit, i) => htif_out_bits(i) = bit }
+          htif.send(htif_out_bits, htif_bytes)
+          poke(top.io.host.out.ready, true)
+          step(1)
+          stepped += 1
+          if (stepped >= stepSize) stepped -= stepSize
+        }
+      } while ((peek(top.io.host.in.ready) && htif_in_valid) || peek(top.io.host.out.valid))
+      poke(top.io.host.in.valid, false)
+      poke(top.io.host.out.ready, false)
+      step(traceLen-stepped)
+    } while (!htif.done && t <= maxcycles)
+    val endTime = System.nanoTime
+    val simTime = (endTime - startTime) / 1000000000.0
+    val simSpeed = t / simTime
+    val reason = if (t < maxcycles) "tohost = " + htif.exit_code else "timeout"
+    expect(htif.exit_code == 0 && t <= maxcycles, "")
+    println("*** %s *** (%s) after %d simulation cycles".format(
+            if (ok) "PASSED" else "FAILED", reason, cycles))
+    println("Time elapsed = %.1f s, Simulation Speed = %.2f Hz".format(simTime, simSpeed))
   }
-  setTraceLen(128)
-  setMemCycles(5)
+  // setTraceLen(128)
+  setMemCycles(100)
   runTests(tests, loadmem)
 }
 

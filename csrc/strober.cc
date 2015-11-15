@@ -15,7 +15,8 @@ public:
     delete htif;
   }
   
-  int run(size_t trace_len = TRACE_MAX_LEN) {
+  int run(size_t step_size, size_t trace_len = TRACE_MAX_LEN) {
+    assert(trace_len % step_size == 0);
     set_trace_len(trace_len);
     set_mem_cycles(100);
     size_t host_in_bits_id   = get_in_id("Top.io_host_in_bits");
@@ -26,7 +27,7 @@ public:
     size_t host_out_ready_id = get_in_id("Top.io_host_out_ready");
     uint64_t start_time = timestamp();
     do {
-      assert(cycles() % get_trace_len() == 0);
+      assert(cycles() % step_size == 0);
       size_t stepped = 0;
       bool host_in_valid = false, host_in_ready, host_out_valid;
       do {
@@ -37,6 +38,7 @@ public:
             poke_port(host_in_valid_id, host_in_valid);
             step(1);
             stepped++;
+            if (stepped >= step_size) stepped -= step_size;
           }
         }
         if ((host_out_valid = peek_port(host_out_valid_id))) {
@@ -45,11 +47,12 @@ public:
           poke_port(host_out_ready_id, true);
           step(1);
           stepped++;
+          if (stepped >= step_size) stepped -= step_size;
         }
       } while ((host_in_ready && host_in_valid) || host_out_valid);
       poke_port(host_in_valid_id, false);
       poke_port(host_out_ready_id, false);
-      step(get_trace_len()-stepped);
+      step(step_size-stepped);
     } while (!htif->done() && cycles() <= max_cycles);
     uint64_t end_time = timestamp();
     double sim_time = (double) (end_time - start_time) / 1000000.0;
@@ -74,5 +77,5 @@ private:
 int main(int argc, char** argv) {
   std::vector<std::string> args(argv + 1, argv + argc);
   Top_t Top(args);
-  return Top.run();
+  return Top.run(128);
 }

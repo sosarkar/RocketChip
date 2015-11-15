@@ -1,3 +1,5 @@
+default: driver 
+
 base_dir      = $(abspath ..)
 fpga_dir      = $(abspath .)
 result_dir    = $(fpga_dir)/results
@@ -41,9 +43,11 @@ CXX         := $(driver_host)-g++
 CXXFLAGS    := $(CXXFLAGS) -std=c++11 -Wall -I$(driver_dir) -include$(generated_dir)/$(MODEL)-const.h
 LDFLAGS     := $(LDFLAGS) -Wl,-rpath,/usr/local/lib -L$(generated_dir) -lfesvr -lpthread
 
-$(result_dir)/libfesvr.so: $(wildcard $(fesvr_dir)/fesvr/*.cc) $(wildcard $(fesvr_dir)/fesvr/*.h)
+$(generated_dir)/libfesvr.so: $(wildcard $(fesvr_dir)/fesvr/*.cc) $(wildcard $(fesvr_dir)/fesvr/*.h)
 	mkdir -p $(generated_dir) $(result_dir)
 	cd $(generated_dir) && $(fesvr_dir)/configure --host=$(driver_host) && make
+
+$(result_dir)/libfesvr.so: $(generated_dir)/libfesvr.so
 	cp $(generated_dir)/libfesvr.so $@
 
 $(driver_obj): $(generated_dir)/%.o: $(driver_dir)/%.cc $(MODEL)-const 
@@ -54,6 +58,8 @@ $(generated_dir)/strober.o: $(csrc_dir)/strober.cc $(result_dir)/libfesvr.so $(M
 
 $(MODEL)-zynq: $(driver_obj) $(generated_dir)/strober.o 
 	$(CXX) $(LDFLAGS) -o$(result_dir)/$(notdir $@) $^
+
+driver: $(MODEL)-zynq
 
 clean:
 	rm -rf $(generated_dir) $(result_dir)
