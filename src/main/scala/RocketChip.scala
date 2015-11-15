@@ -67,7 +67,7 @@ class MultiChannelTopIO extends BasicTopIO with TopLevelParameters {
 /** Top-level module for the chip */
 //TODO: Remove this wrapper once multichannel DRAM controller is provided
 class Top extends Module with TopLevelParameters {
-  val io = new TopIO
+  val io = new TopIO 
   if(!params(UseZscale)) {
     val temp = Module(new MultiChannelTop)
     val arb = Module(new MemIOArbiter(nMemChannels))
@@ -75,6 +75,10 @@ class Top extends Module with TopLevelParameters {
     io.mem <> arb.io.outer
     io.mem_backup_ctrl <> temp.io.mem_backup_ctrl
     io.host <> temp.io.host
+    /* val dramCntr = Module(new DRAMCounters)
+    dramCntr.io.req_cmd.bits  := arb.io.outer.req_cmd.bits
+    dramCntr.io.req_cmd.valid := arb.io.outer.req_cmd.valid
+    dramCntr.io.req_cmd_ready := io.mem.req_cmd.ready */
   } else {
     val temp = Module(new ZscaleTop)
     io.host <> temp.io.host
@@ -209,6 +213,53 @@ class OuterMemorySystem extends Module with TopLevelParameters {
   if(params(UseBackupMemoryPort)) {
     VLSIUtils.doOuterMemorySystemSerdes(mem_channels, io.mem, io.mem_backup, io.mem_backup_en, nMemChannels, params(HTIFWidth))
   } else { io.mem <> mem_channels }
+}
+
+case object BankNumBits extends Field[Int]
+case object BankBitOffset extends Field[Int]
+case object RowNumBits extends Field[Int]
+case object RowBitOffset extends Field[Int]
+class DRAMCounters extends Module {
+  val io = new Bundle {
+    val req_cmd = Valid(new MemReqCmd).flip
+    val req_cmd_ready = Bool(INPUT)
+    val rdSameRowCntr = UInt(OUTPUT, 32)
+    val rdDiffRowCntr = UInt(OUTPUT, 32)
+    val wrSameRowCntr = UInt(OUTPUT, 32)
+    val wrDiffRowCntr = UInt(OUTPUT, 32)
+  }
+  val bankNumBits   = params(BankNumBits)
+  val bankBitOffset = params(BankBitOffset)
+  val rowNumBits    = params(RowNumBits)
+  val rowBitOffset  = params(RowBitOffset)
+  val bankNum = io.req_cmd.bits.addr(bankNumBits+bankBitOffset-1, bankBitOffset)
+  val rowNum  = io.req_cmd.bits.addr(rowNumBits+rowBitOffset-1, rowBitOffset)
+  val rowNumArray = Vec.fill(1 << bankNumBits){RegInit(SInt(-1, rowNumBits))}
+  val rdSameRowCntr = RegInit(UInt(0, 32))
+  val rdDiffRowCntr = RegInit(UInt(0, 32))
+  val wrSameRowCntr = RegInit(UInt(0, 32))
+  val wrDiffRowCntr = RegInit(UInt(0, 32))
+
+  when(io.req_cmd.valid && io.req_cmd_ready) {
+    rowNumArray(bankNum) := rowNum 
+    when(!io.req_cmd.bits.rw) {
+      when(rowNumArray(bankNum) === rowNum) {
+        rdSameRowCntr := rdSameRowCntr + UInt(1)  
+      }.otherwise {
+        rdDiffRowCntr := rdDiffRowCntr + UInt(1)  
+      }
+    }.otherwise {
+      when(rowNumArray(bankNum) === rowNum) {
+        wrSameRowCntr := wrSameRowCntr + UInt(1)  
+      }.otherwise {
+        wrDiffRowCntr := wrDiffRowCntr + UInt(1)  
+      }
+    }
+  }
+  debug(rdSameRowCntr)
+  debug(rdDiffRowCntr)
+  debug(wrSameRowCntr)
+  debug(wrDiffRowCntr)
 }
 
 // Strober

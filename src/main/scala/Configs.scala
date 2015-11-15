@@ -155,6 +155,11 @@ class DefaultConfig extends ChiselConfig (
       case CacheBlockBytes => 64
       case CacheBlockOffsetBits => log2Up(here(CacheBlockBytes))
       case UseBackupMemoryPort => true
+      // DRAM Counters
+      case BankNumBits => 3
+      case BankBitOffset => 0
+      case RowNumBits => 14
+      case RowBitOffset => 11 
   }},
   knobValues = {
     case "NTILES" => 1
@@ -245,9 +250,9 @@ class SmallConfig extends ChiselConfig (
     }},
   knobValues = {
     case "L1D_SETS" => 64
-    case "L1D_WAYS" => 1
+    case "L1D_WAYS" => 2
     case "L1I_SETS" => 64
-    case "L1I_WAYS" => 1
+    case "L1I_WAYS" => 2
   }
 )
 
