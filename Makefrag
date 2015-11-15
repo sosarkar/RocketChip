@@ -12,10 +12,10 @@ SBT := java -Xmx2048M -Xss8M -XX:MaxPermSize=128M -jar sbt-launch.jar \
 	-Djava.library.path=$(base_dir)/src/main/resources
 SHELL := /bin/bash
 
-CHISEL_ARGS := $(MODEL) --W0W --minimumCompatibility 3.0.0 --backend $(BACKEND) --configInstance $(PROJECT).$(CONFIG) --compileInitializationUnoptimized --targetDir $(generated_dir) --genHarness
+CHISEL_ARGS := $(MODEL) --W0W --minimumCompatibility 3.0.0 --backend $(BACKEND) --configInstance $(PROJECT).$(CONFIG) --compileInitializationUnoptimized --targetDir $(generated_dir) --genHarness --noAssert
 
 src_path = src/main/scala
-default_submodules = . junctions uncore hardfloat rocket zscale strober
+default_submodules = . junctions uncore hardfloat rocket zscale
 chisel_srcs = $(addprefix $(base_dir)/,$(addsuffix /$(src_path)/*.scala,$(default_submodules)))
 
 disasm := 2>

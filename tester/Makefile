@@ -20,8 +20,8 @@ ifneq ($(MAKECMDGOALS),clean)
 -include $(generated_dir)/$(MODEL).$(CONFIG).d
 endif
 
-COMPILE_ARGS := --W0W --targetDir $(generated_dir) --genHarness --compile 
-TEST_ARGS    := --W0W --targetDir $(generated_dir) --backend null --test
+COMPILE_ARGS := --W0W --targetDir $(generated_dir) --genHarness --compile --noAssert 
+TEST_ARGS    := --W0W --targetDir $(generated_dir) --backend null --test --noAssert
 isa_hex = $(addprefix $(isa_dir)/, $(addsuffix .hex, $(rv64ui-v-asm-tests)  $(rv64ua-v-asm-tests) \
 	$(rv64ui-p-asm-tests) $(rv64ui-pt-asm-tests) $(rv64um-pt-asm-tests) $(rv64uf-v-asm-tests) \
 	$(rv64uf-p-asm-tests) $(rv64si-p-asm-tests)  $(rv64um-v-asm-tests)  $(rv64mi-p-asm-tests) \
