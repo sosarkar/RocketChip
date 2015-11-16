@@ -258,9 +258,9 @@ class RocketChipNASTIShimTester(c: Module, args: Array[String])
       do {
         if (peek(top.io.host.in.ready) || !htif_in_valid) {
           htif_in_valid = htif.recv_nonblocking(htif_in_bits, htif_bytes)
+          poke(top.io.host.in.valid, htif_in_valid)
+          poke(top.io.host.in.bits, ByteBuffer.wrap(htif_in_bits.reverse).getShort)
           if (htif_in_valid) {
-            reg_poke(top.io.host.in.valid, int(htif_in_valid))
-            reg_poke(top.io.host.in.bits,  int(ByteBuffer.wrap(htif_in_bits.reverse).getShort))
             step(1)
             stepped += 1
             if (stepped >= stepSize) stepped -= stepSize
@@ -280,7 +280,7 @@ class RocketChipNASTIShimTester(c: Module, args: Array[String])
       } while ((peek(top.io.host.in.ready) && htif_in_valid) || peek(top.io.host.out.valid))
       poke(top.io.host.in.valid, false)
       poke(top.io.host.out.ready, false)
-      step(traceLen-stepped)
+      step(stepSize-stepped)
     } while (!htif.done && t <= maxcycles)
     val endTime = System.nanoTime
     val simTime = (endTime - startTime) / 1000000000.0
@@ -288,7 +288,7 @@ class RocketChipNASTIShimTester(c: Module, args: Array[String])
     val reason = if (t < maxcycles) "tohost = " + htif.exit_code else "timeout"
     expect(htif.exit_code == 0 && t <= maxcycles, "")
     println("*** %s *** (%s) after %d simulation cycles".format(
-            if (ok) "PASSED" else "FAILED", reason, cycles))
+            if (ok) "PASSED" else "FAILED", reason, t))
     println("Time elapsed = %.1f s, Simulation Speed = %.2f Hz".format(simTime, simSpeed))
   }
   // setTraceLen(128)

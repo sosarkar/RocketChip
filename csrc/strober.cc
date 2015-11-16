@@ -33,9 +33,10 @@ public:
       do {
         if ((host_in_ready = peek_port(host_in_ready_id)) || !host_in_valid) {
           uint32_t host_in_bits;
-          if ((host_in_valid = htif->recv_nonblocking(&host_in_bits, 2/*16/8*/))) {
-            poke_port(host_in_bits_id,  host_in_bits);
-            poke_port(host_in_valid_id, host_in_valid);
+          host_in_valid = htif->recv_nonblocking(&host_in_bits, 2/*16/8*/);
+          poke_port(host_in_bits_id, host_in_bits);
+          poke_port(host_in_valid_id, host_in_valid);
+          if (host_in_valid) {
             step(1);
             stepped++;
             if (stepped >= step_size) stepped -= step_size;
@@ -44,14 +45,14 @@ public:
         if ((host_out_valid = peek_port(host_out_valid_id))) {
           uint32_t htif_out_bits = peek_port(host_out_bits_id);
           htif->send(&htif_out_bits, 2/*16/8*/);
-          poke_port(host_out_ready_id, true);
+          poke_port(host_out_ready_id, 1);
           step(1);
           stepped++;
           if (stepped >= step_size) stepped -= step_size;
         }
       } while ((host_in_ready && host_in_valid) || host_out_valid);
-      poke_port(host_in_valid_id, false);
-      poke_port(host_out_ready_id, false);
+      poke_port(host_in_valid_id, 0);
+      poke_port(host_out_ready_id, 0);
       step(step_size-stepped);
     } while (!htif->done() && cycles() <= max_cycles);
     uint64_t end_time = timestamp();
