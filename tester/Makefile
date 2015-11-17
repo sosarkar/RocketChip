@@ -10,8 +10,7 @@ vcs_sim_rtl_dir    = $(tester_dir)/vcs-sim-rtl
 vcs_sim_gl_syn_dir = $(tester_dir)/vcs-sim-gl-syn
 vcs_sim_gl_par_dir = $(tester_dir)/vcs-sim-gl-par
 
-#CONFIG      ?= DefaultFPGAConfig
-CONFIG      ?= DefaultFPGASmallConfig
+CONFIG      ?= DefaultFPGAConfig
 SIMCONFIG   ?= RocketSimConfig
 NASTICONFIG ?= RocketNastiConfig
 

@@ -106,7 +106,7 @@ class DefaultConfig extends ChiselConfig (
       }
       case FDivSqrt => true
       case SFMALatency => 2
-      case DFMALatency => 3
+      case DFMALatency => 2
       case CoreInstBits => 32
       case CoreDataBits => site(XLen)
       case CoreDCacheReqTagBits => 7 + log2Up(here(NDCachePorts))

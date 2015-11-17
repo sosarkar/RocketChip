@@ -20,10 +20,10 @@ $(MODEL)-sim-bmark-tests: $(bmark_hex)
 
 $(addprefix $(MODEL)-sim-, $(rv64ui-p-asm-tests)): $(MODEL)-sim-%: $(isa_dir)/%.hex
 	mkdir -p $(log_dir)
-	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL)Wrapper $(TEST_ARGS) --configInstance $(PROJECT).$(SIMCONFIG) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)Wrapper.$(SIMCONFIG) +vpdfile=$(generated_dir)/$(MODEL)Wrapper-$*.vpd" \
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL)Wrapper $(TEST_ARGS) --configInstance $(PROJECT).$(SIMCONFIG) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)Wrapper.$(SIMCONFIG) +vpdfile=$(generated_dir)/$(MODEL)-sim-$*.vpd" \
 	| tee $(log_dir)/$@.log
 
 $(addprefix $(MODEL)-sim-, $(basic-bmark-tests)): $(MODEL)-sim-%: $(bmark_dir)/%.hex
 	mkdir -p $(log_dir)
-	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL)Wrapper $(TEST_ARGS) --configInstance $(PROJECT).$(SIMCONFIG) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)Wrapper.$(SIMCONFIG) +vpdfile=$(generated_dir)/$(MODEL)Wrapper-$*.vpd" \
+	cd $(base_dir) && $(SBT) "project $(PROJECT)" "run $(MODEL)Wrapper $(TEST_ARGS) --configInstance $(PROJECT).$(SIMCONFIG) +loadmem=$< +max-cycles=$(timeout_cycles) --testCommand $(generated_dir)/$(MODEL)Wrapper.$(SIMCONFIG) +vpdfile=$(generated_dir)/$(MODEL)-sim-$*.vpd" \
 	| tee $(log_dir)/$@.log
