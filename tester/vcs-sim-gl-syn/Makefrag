@@ -13,7 +13,7 @@ CXXFLAGS := $(CXXFLAGS) -O2 -I$(VCS_HOME)/include -I$(generated_dir) -fPIC -std=
 VCS = vcs -full64
 
 VCS_OPTS = -quiet -timescale=1ns/1ps -debug_pp -Mdir=simv-$(CONFIG).csrc -P $(tab_file) \
-	+rad +v2k +vpi +define+CLOCK_PERIOD=$(clock_period) +vcs+initreg+random \
+	+rad +v2k +vpi +define+CLOCK_PERIOD=$(vcs_clock_period) +vcs+initreg+random \
 	+notimingcheck +no_notifier \
 
 $(generated_dir)/$(MODEL).$(CONFIG)-harness.v: $(generated_dir)/$(MODEL).$(CONFIG).v
