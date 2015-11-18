@@ -67,10 +67,10 @@ class NastiConfig extends ChiselConfig(
       case "Slave"  => 6
     }
     case NASTIAddrSizeBits => 10
-
     case LineSize        => here(CacheBlockBytes)
     case MemAddrSizeBits => 28
     case MemMaxCycles    => 256
+    case BuildDRAMCounters => Some(() => new DRAMCounters)
   }
 )
 

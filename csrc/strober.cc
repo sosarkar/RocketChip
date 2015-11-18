@@ -1,4 +1,5 @@
 #include <fesvr/htif_pthread.h>
+#include <csignal>
 #include "simif_zynq.h"
 
 class Top_t: simif_zynq_t {
@@ -11,10 +12,14 @@ public:
       }
     }
   }
-  ~Top_t() {
+  virtual ~Top_t() {
     delete htif;
   }
   
+  void stop() {
+    htif->stop();
+  }
+
   int run(size_t step_size, size_t trace_len = TRACE_MAX_LEN) {
     assert(trace_len % step_size == 0);
     set_trace_len(trace_len);
@@ -75,8 +80,17 @@ private:
   uint64_t max_cycles;
 };
 
+Top_t* Top;
+void handle_sigterm(int sig) {
+  Top->stop();
+  delete Top;
+}
+
 int main(int argc, char** argv) {
   std::vector<std::string> args(argv + 1, argv + argc);
-  Top_t Top(args);
-  return Top.run(128);
+  Top = new Top_t(args);
+  signal(SIGTERM, handle_sigterm);
+  int ret = Top->run(128);
+  delete Top;
+  return ret;
 }

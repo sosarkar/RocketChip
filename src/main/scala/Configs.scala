@@ -156,6 +156,7 @@ class DefaultConfig extends ChiselConfig (
       case CacheBlockOffsetBits => log2Up(here(CacheBlockBytes))
       case UseBackupMemoryPort => true
       // DRAM Counters
+      case BuildDRAMCounters => None
       case BankNumBits => 3
       case BankBitOffset => 0
       case RowNumBits => 14
