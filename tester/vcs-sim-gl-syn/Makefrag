@@ -19,7 +19,7 @@ VCS_OPTS = -quiet -timescale=1ns/1ps -debug_pp -Mdir=simv-$(CONFIG).csrc -P $(ta
 $(generated_dir)/$(MODEL).$(CONFIG)-harness.v: $(generated_dir)/$(MODEL).$(CONFIG).v
 
 $(ressult_dir)/$(MODEL).mapped.v:
-        cd $(dc_dir) && make MODEL=$(MODEL)
+	cd $(dc_dir) && make MODEL=$(MODEL)
 
 $(report_dir)/$(MODEL).fmv_matched_points.rpt:
 	cd $(dc_dir) && make fm MODEL=$(MODEL)
