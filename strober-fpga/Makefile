@@ -31,6 +31,7 @@ $(MODEL)-const: $(generated_dir)/$(MODEL)-const.h
 	
 $(MODEL)-fpga: $(generated_dir)/$(MODEL)-const.h
 	cd $(board_dir); make clean; time make $(bitstream) DESIGN=$(MODEL); cp $(bitstream) $(result_dir)
+	cp $(board_dir)/fpga-images-$(board)/boot_image/rocketchip_wrapper.bit $(result_dir)/strober_wrapper.bit 
 
 # Compile driver
 csrc_dir    := $(base_dir)/csrc
