@@ -8,7 +8,7 @@ isa_dir       = $(base_dir)/riscv-tools/riscv-tests/isa
 bmark_dir     = $(base_dir)/riscv-tools/riscv-tests/benchmarks
 vcs_sim_rtl_dir    = $(tester_dir)/vcs-sim-rtl
 vcs_sim_gl_syn_dir = $(tester_dir)/vcs-sim-gl-syn
-vcs_sim_gl_par_dir = $(tester_dir)/vcs-sim-gl-par
+vcs_sim_gl_par_dir ?= $(tester_dir)/vcs-sim-gl-par
 
 CONFIG      ?= DefaultFPGAConfig
 SIMCONFIG   ?= RocketSimConfig

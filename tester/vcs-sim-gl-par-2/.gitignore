@@ -1,0 +1,7 @@
+simv-*
+*.key
+*.vpd
+*.vcd
+*.saif
+*.match
+sdfAnnotateInfo

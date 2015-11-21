@@ -38,7 +38,7 @@ $(saif): $(if $(SAMPLE), $(SAMPLE), $(generated_dir)/$(MODEL).sample) $(vcs_sim_
 	rm -f $(vcs_sim_gl_par_dir)/$(prefix)-pipe.vcd
 	cd $(base_dir) && vcd2saif \
 	-input $(vcs_sim_gl_par_dir)/$(prefix)-pipe.vcd -output $@ -pipe \
-	"$(SBT) \"project $(PROJECT)\" \"run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) --noInlineMem +sample=$< +match=$(word 2, $^) --testCommand $(word 3, $^) +vcdfile=$(vcs_sim_gl_par_dir)/$(prefix)-pipe.vcd +vpdfile=$(generated_dir)/$(prefix).vpd\"" \
+	"$(SBT) \"project $(PROJECT)\" \"run $(MODEL) $(TEST_ARGS) --configInstance $(PROJECT).$(CONFIG) --noInlineMem +sample=$< +match=$(word 2, $^) --testCommand $(word 3, $^) +vcdfile=$(vcs_sim_gl_par_dir)/$(prefix)-pipe.vcd +vpdfile=$(vcs_sim_gl_par_dir)/$(prefix).vpd\"" \
 	| tee $(log_dir)/$(prefix)-replay-gl-par.log
 	
 $(MODEL)-replay-gl-par: $(saif)

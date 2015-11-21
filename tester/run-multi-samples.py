@@ -11,8 +11,9 @@ modules = list()
 sample_pwr = dict()
 
 class ThreadClass(threading.Thread):
-  def __init__(self, num, job):
+  def __init__(self, prefix, num, job):
     threading.Thread.__init__(self)
+    self.prefix = prefix
     self.num = num
     self.job = job
     self.modules = list()
@@ -20,13 +21,14 @@ class ThreadClass(threading.Thread):
     return
 
   def run(self):
-    sample = os.path.abspath("generated-src/Top_" + str(self.num) + ".sample")
-    pt_dir = os.path.abspath("pt-pwr-" + str(self.job))
+    sample  = os.path.abspath("generated-src/" + self.prefix + "_" + str(self.num) + ".sample")
+    vcs_dir = os.path.abspath("vcs-sim-gl-par-" + str(self.job))
+    pt_dir  = os.path.abspath("pt-pwr-" + str(self.job))
     if os.path.isfile(sample):
       print "[JOB #" + str(self.job) + "] runs gate-level simulation (pt_dir = " + pt_dir + ")"
-      call(["make", "Top-replay-pwr", "SAMPLE=" + sample, "pt_dir=" + pt_dir])
+      call(["make", "Top-replay-pwr", "SAMPLE=" + sample, "vcs_sim_gl_par_dir=" + vcs_dir, "pt_dir=" + pt_dir])
       print "[JOB #" + str(self.job) + "] finishes gate-level simulation"
-      self.read_power_rpt(pt_dir, "Top_" + str(self.num))
+      self.read_power_rpt(pt_dir, self.prefix + "_" + str(self.num))
 
   def read_power_rpt(self, pt_dir, prefix):
     pwr_regex = re.compile(r"""
@@ -58,13 +60,14 @@ class ThreadClass(threading.Thread):
             self.sample_pwr[module] = total_pwr
 
 if __name__ == '__main__':
-  job_num = 6 #int(sys.argv[1]) if sys.argv > 1 else 6
+  prefix = str(sys.argv[1]) if (len(sys.argv) > 1) else "Top"
+  job_num = int(sys.argv[2]) if (len(sys.argv) > 2) else 6 
 
   """ split samples """
   samples = list()
   sample_size = 0
   print "split samples"
-  with open("generated-src/Top.sample") as f:
+  with open("generated-src/" + prefix + ".sample") as f:
     for line in f:
       if line[0:8] == "0 cycle:":
         samples.append("")
@@ -72,16 +75,20 @@ if __name__ == '__main__':
         sample_size += 1
       samples[-1] += line
   for i, sample in enumerate(samples[0:-1]):
-    with open("generated-src/Top_" + str(i) + ".sample", "w") as f:
+    with open("generated-src/" + prefix  + "_" + str(i) + ".sample", "w") as f:
       f.write(sample)
   print "split done"
-  
+ 
+  """ clean up """
+  for i in range(job_num):
+    call(["make", "-C", "pt-pwr-" + str(i), "claen"])
+ 
   """ launch replays """
   first = True
   for k in range((sample_size+job_num)/job_num):
     threads = list()
     for i in range(job_num):
-      t = ThreadClass(k*job_num+i, i)
+      t = ThreadClass(prefix, k*job_num+i, i)
       print "launch job #" + str(i)
       t.start()
       threads.append(t)
@@ -97,7 +104,7 @@ if __name__ == '__main__':
         sample_pwr[mod].append(t.sample_pwr[mod])
 
   """ dump power """
-  with open("Top-pwr.csv", "w") as csvfile:
+  with open(prefix + "-pwr.csv", "w") as csvfile:
      writer = csv.writer(csvfile)
      for m in modules:
        writer.writerow([m] + sample_pwr[m])
