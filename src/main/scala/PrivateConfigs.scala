@@ -167,3 +167,30 @@ class ISCA2016LOVB4Config extends Config(new VRU10Outstanding ++ new WithoutConf
 class ISCA2016LOVB8Config extends Config(new WithoutConfPrec ++ new ISCA2016Config)
 class ISCA2016HOVB4Config extends Config(new VRU10Outstanding ++ new With2BanksPerMemChannel ++ new ISCA2016Config)
 class ISCA2016HOVB8Config extends Config(new ISCA2016Config)
+
+class WithVLSHwacha extends Config(
+  (pname, site, here) => pname match {
+    case BuildRoCC => {
+      TestGeneration.addSuites(rv64uv.map(_("p")))
+      // no excep or vm in v4 yet
+      //TestGeneration.addSuites((if(site(UseVM)) List("pt","v") else List("pt")).flatMap(env => rv64uv.map(_(env))))
+      TestGeneration.addSuite(rv64sv("p"))
+      TestGeneration.addVariable("SRC_EXTENSION", "$(base_dir)/hwacha/$(src_path)/*.scala")
+      TestGeneration.addVariable("DISASM_EXTENSION", "--extension=hwacha")
+      Seq(
+        RoccParameters(
+          opcodes = OpcodeSet.custom0 | OpcodeSet.custom1,
+          generator = (p: Parameters) =>
+            (Module(new Hwacha()(p.alterPartial({ case CoreName => "Hwacha" })))),
+          nMemChannels = site(HwachaNLanes),
+          useFPU = true),
+        RoccParameters(
+          opcodes = OpcodeSet.custom2,
+          generator = (p: Parameters) => Module(new DmaController()(p)),
+          useDma = true))
+    }
+    case UseDma => true
+  })
+
+class VLSHwachaConfig extends Config(
+  new WithVLSHwacha ++ new DefaultHwachaConfig ++ new DefaultL2Config)
