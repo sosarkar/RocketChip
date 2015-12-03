@@ -29,7 +29,7 @@ $(vpi_objs): %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 simv-$(CONFIG): $(sim_vsrcs) $(vpi_objs)
-	$(VCS) $(VCS_OPTS) -use_vpiobj $(vpi_objs) -o $@ $(sim_vsrcs)
+	$(VCS) $(VCS_OPTS) -o $@ $^
 
 $(MODEL).$(CONFIG).match: $(report_dir)/$(MODEL).fmv_matched_points.rpt
 	$(tester_dir)/translator.py --output $@ --match $<
