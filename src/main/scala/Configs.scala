@@ -135,6 +135,10 @@ class DefaultConfig extends Config (
       }
       case BuildRoCC => Nil
       case RoccNMemChannels => site(BuildRoCC).map(_.nMemChannels).foldLeft(0)(_ + _)
+      case UseDma => false
+      case NDmaTransactors => 1
+      case NDmaClients => site(NTiles)
+      case NDmaXactsPerClient => 1
       //Rocket Core Constants
       case CoreName => "Rocket"
       case FetchWidth => 1
@@ -167,10 +171,13 @@ class DefaultConfig extends Config (
           coherencePolicy = new MESICoherence(site(L2DirectoryRepresentation)),
           nManagers = site(NBanksPerMemoryChannel)*site(NMemoryChannels),
           nCachingClients = site(NTiles),
-          nCachelessClients = 1 + site(NTiles) *
-                                (1 + (if(site(BuildRoCC).isEmpty) 0 else site(RoccNMemChannels))),
+          nCachelessClients = (if (site(UseDma)) 2 else 1) +
+                              site(NTiles) *
+                                (1 + (if(site(BuildRoCC).isEmpty) 0
+                                      else site(RoccNMemChannels))),
           maxClientXacts = max(site(NMSHRs) + site(NIOMSHRs),
-                               if(site(BuildRoCC).isEmpty) 1 else site(RoccMaxTaggedMemXacts)),
+                               max(if (site(BuildRoCC).isEmpty) 1 else site(RoccMaxTaggedMemXacts),
+                                   if (site(UseDma)) 3 else 1)),
           maxClientsPerPort = if(site(BuildRoCC).isEmpty) 1 else 2,
           maxManagerXacts = site(NAcquireTransactors) + 2,
           dataBits = site(CacheBlockBytes)*8,
@@ -336,12 +343,29 @@ class WithCacheFillTest extends Config(
     case "L2_CAPACITY_IN_KB" => 4
   })
 
+class WithDmaTest extends Config(
+  (pname, site, here) => pname match {
+    case UseDma => true
+    case BuildGroundTest =>
+      (id: Int, p: Parameters) => Module(new DmaTest()(p))
+    case DmaTestSet => DmaTestCases(
+      (0x00001FF0, 0x00002FF4, 72),
+      (0x00001FF4, 0x00002FF0, 72),
+      (0x00001FF0, 0x00002FE0, 72),
+      (0x00001FE0, 0x00002FF0, 72),
+      (0x00884DA4, 0x008836C0, 40))
+    case DmaTestDataStart => 0x3012CC00
+    case DmaTestDataStride => 8
+  })
+
+
 class GroundTestConfig extends Config(new WithGroundTest ++ new DefaultConfig)
 class MemtestConfig extends Config(new WithMemtest ++ new GroundTestConfig)
 class MemtestL2Config extends Config(
   new WithMemtest ++ new WithL2Cache ++ new GroundTestConfig)
 class CacheFillTestConfig extends Config(
   new WithCacheFillTest ++ new WithL2Cache ++ new GroundTestConfig)
+class DmaTestConfig extends Config(new WithDmaTest ++ new GroundTestConfig)
 
 class FPGAConfig extends Config (
   (pname,site,here) => pname match {
@@ -406,6 +430,19 @@ class WithRoccExample extends Config(
   })
 
 class RoccExampleConfig extends Config(new WithRoccExample ++ new DefaultConfig)
+
+class WithDmaController extends Config(
+  (pname, site, here) => pname match {
+    case UseDma => true
+    case BuildRoCC => Seq(
+        RoccParameters(
+          opcodes = OpcodeSet.custom2,
+          generator = (p: Parameters) => Module(new DmaController()(p)),
+          useDma = true))
+    case RoccMaxTaggedMemXacts => 1
+  })
+
+class DmaControllerConfig extends Config(new WithDmaController ++ new DefaultConfig)
 
 class SmallL2Config extends Config(
   new With2MemoryChannels ++ new With4BanksPerMemChannel ++
