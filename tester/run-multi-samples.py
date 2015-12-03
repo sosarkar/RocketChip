@@ -64,13 +64,12 @@ if __name__ == '__main__':
  
   """ clean up """
   for i in range(job_num):
-    call(["make", "-C", "pt-pwr-" + str(i), "clean"])
+    #call(["make", "-C", "pt-pwr-" + str(i), "clean"])
     call(["rm", os.path.abspath("vcs-sim-gl-par-" + str(i)) + "/*-pipe.vcd"])
  
   """ launch replays """
   if not os.path.exists("logs"):
     os.mkdirs("logs")
-  first = True
   for k in range((sample_size+job_num-1)/job_num+1):
     ps = list()
     logs = list()
@@ -99,10 +98,9 @@ if __name__ == '__main__':
       if os.path.exists(sample):
         logs[job].close()
         pt_dir  = os.path.abspath("pt-pwr-" + str(job))
-        read_power_rpt(pt_dir, prefix + "_" + str(num), first)
+        read_power_rpt(pt_dir, prefix + "_" + str(num), num == 0)
 
     print "Loop " + str(k) + " done in " + str(time.clock() - startTime) + " secs" 
-    first = False
 
   """ dump power """
   with open(prefix + "-pwr.csv", "w") as csvfile:
