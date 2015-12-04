@@ -350,7 +350,8 @@ class WithDmaTest extends Config(
       (0x00001FF4, 0x00002FF0, 72),
       (0x00001FF0, 0x00002FE0, 72),
       (0x00001FE0, 0x00002FF0, 72),
-      (0x00884DA4, 0x008836C0, 40))
+      (0x00884DA4, 0x008836C0, 40),
+      (0x00800008, 0x00800008, 64))
     case DmaTestDataStart => 0x3012CC00
     case DmaTestDataStride => 8
   })
@@ -362,7 +363,7 @@ class MemtestL2Config extends Config(
   new WithMemtest ++ new WithL2Cache ++ new GroundTestConfig)
 class CacheFillTestConfig extends Config(
   new WithCacheFillTest ++ new WithL2Cache ++ new GroundTestConfig)
-class DmaTestConfig extends Config(new WithDmaTest ++ new GroundTestConfig)
+class DmaTestConfig extends Config(new WithDmaTest ++ new WithL2Cache ++ new GroundTestConfig)
 
 class FPGAConfig extends Config (
   (pname,site,here) => pname match {
@@ -439,7 +440,7 @@ class WithDmaController extends Config(
     case RoccMaxTaggedMemXacts => 1
   })
 
-class DmaControllerConfig extends Config(new WithDmaController ++ new DefaultConfig)
+class DmaControllerConfig extends Config(new WithDmaController ++ new DefaultL2Config)
 
 class SmallL2Config extends Config(
   new With2MemoryChannels ++ new With4BanksPerMemChannel ++
