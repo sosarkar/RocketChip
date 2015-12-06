@@ -193,4 +193,4 @@ class WithVLSHwacha extends Config(
   })
 
 class VLSHwachaConfig extends Config(
-  new WithVLSHwacha ++ new DefaultHwachaConfig ++ new DefaultL2Config)
+  new WithL2Capacity64 ++ new WithVLSHwacha ++ new DefaultHwachaConfig ++ new DefaultL2Config)
