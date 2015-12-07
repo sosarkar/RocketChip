@@ -212,6 +212,9 @@ class DefaultConfig extends Config (
       case MMIOBase => Dump("MEM_SIZE", BigInt(1 << 30)) // 1 GB
       case ExternalIOStart => 2 * site(MMIOBase)
       case DeviceTree => makeDeviceTree()
+      case UseVLS => false
+      case UseL2BankCounters => false
+      case L2CounterWidth => site(XLen)
       case GlobalAddrMap => AddrMap(
         AddrMapEntry("mem", None, MemChannels(site(MMIOBase), site(NMemoryChannels), AddrMapConsts.RWX)),
         AddrMapEntry("conf", None, MemSubmap(site(ExternalIOStart) - site(MMIOBase), genCsrAddrMap)),
@@ -379,6 +382,41 @@ class WithDmaController extends Config(
   })
 
 class DmaControllerConfig extends Config(new WithDmaController ++ new DefaultL2Config)
+
+class WithVLS extends Config(
+  topDefinitions = { (pname, site, here) =>
+    def genCsrAddrMap: AddrMap = {
+      val deviceTree = AddrMapEntry("devicetree", None, MemSize(1 << 15, AddrMapConsts.R))
+      val csrSize = (1 << 12) * (site(XLen) / 8)
+      val csrs = (0 until site(NTiles)).map{ i =>
+        AddrMapEntry(s"csr$i", None, MemSize(csrSize, AddrMapConsts.RW))
+      }
+      val scrSize = site(HtifKey).nSCR * (site(XLen) / 8)
+      val scr = AddrMapEntry("scr", None, MemSize(scrSize, AddrMapConsts.RW))
+      new AddrMap(deviceTree +: csrs :+ scr)
+    }
+    def genL2CounterAddrMap: AddrMap = {
+      val counterSize = (1 << 15) // min required
+      val l2counters = (0 until site(NBanksPerMemoryChannel)).map{ i =>
+        AddrMapEntry(s"l2bank$i", None, MemSize(counterSize, AddrMapConsts.RW))
+      }
+      new AddrMap(l2counters)
+    }
+    pname match {
+      case UseVLS => true
+      case UseL2BankCounters => true
+      case NVLSCacheSegments => 1
+      case GlobalAddrMap => AddrMap(
+        AddrMapEntry("mem", None, MemChannels(site(MMIOBase), site(NMemoryChannels), AddrMapConsts.RWX)),
+        AddrMapEntry("conf", None, MemSubmap(BigInt(1 << 21), genCsrAddrMap)),
+        AddrMapEntry("vls", None, MemSize(BigInt(1 << 20),AddrMapConsts.RW)),
+        AddrMapEntry("counters", None, MemSubmap(BigInt(1 << 20), genL2CounterAddrMap)),
+        AddrMapEntry("io", Some(site(ExternalIOStart)), MemSize(2 * site(MMIOBase), AddrMapConsts.RW)))
+    }
+  })
+
+class VLSCPPConfig extends Config(new WithVLS ++ new DefaultL2CPPConfig)
+class VLSVLSIConfig extends Config(new WithVLS ++ new DefaultL2VLSIConfig)
 
 class SmallL2Config extends Config(
   new With2MemoryChannels ++ new With4BanksPerMemChannel ++

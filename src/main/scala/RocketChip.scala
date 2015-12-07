@@ -31,6 +31,8 @@ case object BuildTiles extends Field[Seq[(Bool, Parameters) => Tile]]
 case object ExternalIOStart extends Field[BigInt]
 /** Enable DMA engine */
 case object UseDma extends Field[Boolean]
+/** Enable VLS */
+case object UseVLS extends Field[Boolean]
 
 /** Utility trait for quick access to some relevant parameters */
 trait HasTopLevelParameters {
@@ -286,6 +288,46 @@ class OuterMemorySystem(implicit val p: Parameters) extends Module with HasTopLe
     val conv = Module(new SMIIONastiIOConverter(xLen, csrAddrBits))
     conv.io.nasti <> interconnect.io.slaves(csrPort)
     io.csr(i) <> conv.io.smi
+  }
+
+  if (p(UseVLS)) {
+    val vlsName = s"vls"
+    val vlsPort = addrHashMap(vlsName).port
+    val conv = Module(new SMIIONastiIOConverter(xLen, 17))
+    conv.io.nasti <> interconnect.io.slaves(vlsPort)
+    for ((bank, i) <- managerEndpoints.zipWithIndex) {
+      bank match {
+        case l2b : L2HellaCacheBank => {
+          if (i == 0) {
+            l2b.io.gconf <> conv.io.smi
+          } else {
+            l2b.io.gconf.req.valid := conv.io.smi.req.valid
+            l2b.io.gconf.req.bits := conv.io.smi.req.bits
+            l2b.io.gconf.resp.ready := Bool(true)
+          }
+        }
+      }
+    }
+  }
+
+  if (p(UseL2BankCounters)) {
+    for ((bank, i) <- managerEndpoints.zipWithIndex) {
+      val countName = s"counters:l2bank$i"
+      val countPort = addrHashMap(countName).port
+      val conv = Module(new SMIIONastiIOConverter(xLen, 17))
+      conv.io.nasti <> interconnect.io.slaves(countPort)
+      bank match {
+        case l2b : L2HellaCacheBank => {
+          if (i == 0) {
+            l2b.io.lconf <> conv.io.smi
+          } else {
+            l2b.io.lconf.req.valid := conv.io.smi.req.valid
+            l2b.io.lconf.req.bits := conv.io.smi.req.bits
+            l2b.io.lconf.resp.ready := Bool(true)
+          }
+        }
+      }
+    }
   }
 
   val conv = Module(new SMIIONastiIOConverter(scrDataBits, scrAddrBits))
