@@ -160,6 +160,9 @@ class ISCA2016Config extends Config(
   }
 }
 
+class WithoutVRU extends Config(
+  knobValues = { case "HWACHA_BUILD_VRU" => false })
+
 class ISCA2016L2Config extends Config(new With2Lanes ++ new ISCA2016Config)
 class ISCA2016L4Config extends Config(new With4Lanes ++ new ISCA2016Config)
 
@@ -194,3 +197,4 @@ class WithVLSHwacha extends Config(
   })
 
 class VLSHwachaConfig extends Config(new WithVLSHwacha ++ new ISCA2016Config)
+class NoVRUVLSHwachaConfig extends Config(new WithoutVRU ++ new VLSHwachaConfig)
