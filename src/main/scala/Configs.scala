@@ -143,9 +143,9 @@ class DefaultConfig extends Config (
       case BuildRoCC => Nil
       case RoccNMemChannels => site(BuildRoCC).map(_.nMemChannels).foldLeft(0)(_ + _)
       case UseDma => false
-      case NDmaTransactors => 1
+      case NDmaTransactors => 3
       case NDmaClients => site(NTiles)
-      case NDmaXactsPerClient => 1
+      case NDmaXactsPerClient => site(NDmaTransactors)
       //Rocket Core Constants
       case CoreName => "Rocket"
       case FetchWidth => 1
@@ -383,3 +383,5 @@ class DmaControllerConfig extends Config(new WithDmaController ++ new DefaultL2C
 class SmallL2Config extends Config(
   new With2MemoryChannels ++ new With4BanksPerMemChannel ++
   new WithL2Capacity256 ++ new DefaultL2Config)
+
+class SmallL2DmaConfig extends Config(new WithDmaController ++ new SmallL2Config)

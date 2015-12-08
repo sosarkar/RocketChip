@@ -193,7 +193,6 @@ class WithVLSHwacha extends Config(
           useDma = true))
     }
     case UseDma => true
-    case NDmaTransactors => 2
   })
 
 class VLSHwachaConfig extends Config(new WithVLSHwacha ++ new ISCA2016Config)
