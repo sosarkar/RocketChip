@@ -184,8 +184,9 @@ class DefaultConfig extends Config (
                                       else site(RoccNMemChannels))),
           maxClientXacts = max(site(NMSHRs) + site(NIOMSHRs),
                                max(if (site(BuildRoCC).isEmpty) 1 else site(RoccMaxTaggedMemXacts),
-                                   if (site(UseDma)) 3 else 1)),
-          maxClientsPerPort = if(site(BuildRoCC).isEmpty) 1 else 2,
+                                   if (site(UseDma)) 4 else 1)),
+          maxClientsPerPort = max(if(site(BuildRoCC).isEmpty) 1 else 2,
+                                  if (site(UseDma)) site(NDmaTransactors) else 1),
           maxManagerXacts = site(NAcquireTransactors) + 2,
           dataBits = site(CacheBlockBytes)*8,
           dataBeats = 2)
