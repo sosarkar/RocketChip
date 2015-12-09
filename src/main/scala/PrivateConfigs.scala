@@ -171,7 +171,7 @@ class ISCA2016LOVB8Config extends Config(new WithoutConfPrec ++ new ISCA2016Conf
 class ISCA2016HOVB4Config extends Config(new VRU10Outstanding ++ new With2BanksPerMemChannel ++ new ISCA2016Config)
 class ISCA2016HOVB8Config extends Config(new ISCA2016Config)
 
-class WithVLSHwacha extends Config(
+class WithHwachaDma extends Config(
   (pname, site, here) => pname match {
     case BuildRoCC => {
       TestGeneration.addSuites(rv64uv.map(_("p")))
@@ -195,5 +195,5 @@ class WithVLSHwacha extends Config(
     case UseDma => true
   })
 
-class VLSHwachaConfig extends Config(new WithVLSHwacha ++ new ISCA2016Config)
-class NoVRUVLSHwachaConfig extends Config(new WithoutVRU ++ new VLSHwachaConfig)
+class VRUVLSHwachaConfig extends Config(new WithVLS ++ new WithHwachaDma ++ new ISCA2016Config)
+class NoVRUVLSHwachaConfig extends Config(new WithoutVRU ++ new VRUVLSHwachaConfig)
