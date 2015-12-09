@@ -31,8 +31,6 @@ case object BuildTiles extends Field[Seq[(Bool, Parameters) => Tile]]
 case object ExternalIOStart extends Field[BigInt]
 /** Enable DMA engine */
 case object UseDma extends Field[Boolean]
-/** Enable VLS */
-case object UseVLS extends Field[Boolean]
 
 /** Utility trait for quick access to some relevant parameters */
 trait HasTopLevelParameters {

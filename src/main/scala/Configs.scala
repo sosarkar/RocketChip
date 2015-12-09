@@ -215,6 +215,7 @@ class DefaultConfig extends Config (
       case DeviceTree => makeDeviceTree()
       case UseVLS => false
       case UseL2BankCounters => false
+      case NVLSCacheSegments => 1
       case L2CounterWidth => site(XLen)
       case GlobalAddrMap => AddrMap(
         AddrMapEntry("mem", None, MemChannels(site(MMIOBase), site(NMemoryChannels), AddrMapConsts.RWX)),
@@ -398,7 +399,8 @@ class WithVLS extends Config(
     }
     def genL2CounterAddrMap: AddrMap = {
       val counterSize = (1 << 15) // min required
-      val l2counters = (0 until site(NBanksPerMemoryChannel)).map{ i =>
+      val nbanks = site(NBanksPerMemoryChannel) * site(NMemoryChannels)
+      val l2counters = (0 until nbanks).map{ i =>
         AddrMapEntry(s"l2bank$i", None, MemSize(counterSize, AddrMapConsts.RW))
       }
       new AddrMap(l2counters)
