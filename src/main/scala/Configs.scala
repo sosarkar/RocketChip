@@ -124,6 +124,7 @@ class DefaultConfig extends Config (
       case NIOMSHRs => 1
       case LRSCCycles => 32 
       //L2 Memory System Params
+      case L2Replacer => () => new SeqRandom(site(NWays)) 
       case NAcquireTransactors => 7
       case L2StoreDataQueueDepth => 1
       case L2DirectoryRepresentation => new NullRepresentation(site(NTiles))
@@ -214,6 +215,7 @@ class DefaultConfig extends Config (
       case ExternalIOStart => 2 * site(MMIOBase)
       case DeviceTree => makeDeviceTree()
       case UseVLS => false
+      case SplitMetadata => false
       case UseL2BankCounters => false
       case NVLSCacheSegments => 1
       case L2CounterWidth => site(XLen)
@@ -418,8 +420,10 @@ class WithVLS extends Config(
     }
   })
 
-class VLSCPPConfig extends Config(new WithVLS ++ new DefaultL2CPPConfig)
-class VLSVLSIConfig extends Config(new WithVLS ++ new DefaultL2VLSIConfig)
+class WithL2PLRU extends Config(
+  (pname, site, here) => pname match {
+    case L2Replacer => () => new SeqPLRU(site(NSets),site(NWays))
+})
 
 class SmallL2Config extends Config(
   new With2MemoryChannels ++ new With4BanksPerMemChannel ++

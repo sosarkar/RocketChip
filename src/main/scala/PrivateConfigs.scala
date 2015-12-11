@@ -195,5 +195,13 @@ class WithHwachaDma extends Config(
     case UseDma => true
   })
 
+class SplitMetadata extends Config(
+  (pname, site, here) => pname match {
+    case SplitMetadata => true
+})
+
 class VRUVLSHwachaConfig extends Config(new WithVLS ++ new WithHwachaDma ++ new ISCA2016Config)
 class NoVRUVLSHwachaConfig extends Config(new WithoutVRU ++ new VRUVLSHwachaConfig)
+class NoVRUSplitVLSHwachaConfig extends Config(new SplitMetadata ++ new NoVRUVLSHwachaConfig)
+class NoVRUPLRUBaseline extends Config(new WithL2PLRU ++ new NoVRUVLSHwachaConfig)
+class VRUPLRUBaseline extends Config(new WithL2PLRU ++ new VRUVLSHwachaConfig)
