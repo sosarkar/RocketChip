@@ -102,3 +102,19 @@ class DmaTestConfig extends Config(new WithDmaTest ++ new WithL2Cache ++ new Gro
 class FancyMemtestConfig extends Config(
   new With2Cores ++ new With2MemoryChannels ++ new With2BanksPerMemChannel ++
   new WithMemtest ++ new WithL2Cache ++ new GroundTestConfig)
+
+class WithSinglePrecFPUTest extends Config(
+  (pname, site, here) => pname match {
+    case BuildGroundTest =>
+      (id: Int, p: Parameters) => Module(new SinglePrecFPUTest()(p))
+  })
+class SinglePrecFPUTestConfig extends Config(
+  new WithSinglePrecFPUTest ++ new GroundTestConfig)
+
+class WithDoublePrecFPUTest extends Config(
+  (pname, site, here) => pname match {
+    case BuildGroundTest =>
+      (id: Int, p: Parameters) => Module(new DoublePrecFPUTest()(p))
+  })
+class DoublePrecFPUTestConfig extends Config(
+  new WithDoublePrecFPUTest ++ new GroundTestConfig)
