@@ -118,3 +118,11 @@ class WithDoublePrecFPUTest extends Config(
   })
 class DoublePrecFPUTestConfig extends Config(
   new WithDoublePrecFPUTest ++ new GroundTestConfig)
+
+class WithConvFPUTest extends Config(
+  (pname, site, here) => pname match {
+    case BuildGroundTest =>
+      (id: Int, p: Parameters) => Module(new ConvFPUTest()(p))
+  })
+class ConvFPUTestConfig extends Config(
+  new WithConvFPUTest ++ new GroundTestConfig)
