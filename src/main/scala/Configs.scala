@@ -156,8 +156,11 @@ class DefaultConfig extends Config (
       case UseDma => false
       case UseStreamLoopback => false
       case NDmaTransactors => 3
-      case NDmaClients => site(NTiles)
-      case NDmaXactsPerClient => site(NDmaTransactors)
+      case NDmaXacts => site(NDmaTransactors) * site(NTiles)
+      case DmaBaseAddr => {
+        val addrMap = new AddrHashMap(site(GlobalAddrMap))
+        addrMap("devices:dma").start
+      }
       //Rocket Core Constants
       case FetchWidth => 1
       case RetireWidth => 1
@@ -234,6 +237,9 @@ class DefaultConfig extends Config (
         val devset = new DeviceSet
         if (site(UseStreamLoopback)) {
           devset.addDevice("loopback", site(StreamLoopbackWidth) / 8, "stream")
+        }
+        if (site(UseDma)) {
+          devset.addDevice("dma", site(CacheBlockBytes), "dma")
         }
         devset
       }
@@ -402,8 +408,7 @@ class WithDmaController extends Config(
     case BuildRoCC => Seq(
         RoccParameters(
           opcodes = OpcodeSet.custom2,
-          generator = (p: Parameters) => Module(new DmaController()(p)),
-          useDma = true))
+          generator = (p: Parameters) => Module(new DmaController()(p))))
     case RoccMaxTaggedMemXacts => 1
   })
 

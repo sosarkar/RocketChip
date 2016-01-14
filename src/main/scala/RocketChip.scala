@@ -117,7 +117,6 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   uncore.io.tiles_uncached <> tileList.map(_.io.uncached).flatten
   io.host <> uncore.io.host
   if (p(UseBackupMemoryPort)) { io.mem_backup_ctrl <> uncore.io.mem_backup_ctrl }
-  if (p(UseDma)) { uncore.io.dma <> tileList.map(_.io.dma) }
 
   io.mem.zip(uncore.io.mem).foreach { case (outer, inner) =>
     TopUtils.connectNasti(outer, inner)
@@ -146,7 +145,6 @@ class Uncore(implicit val p: Parameters) extends Module
     val htif = Vec(nTiles, new HtifIO).flip
     val mem_backup_ctrl = new MemBackupCtrlIO
     val mmio = new NastiIO
-    val dma = Vec(nTiles, new DmaIO).flip
   }
 
   val htif = Module(new Htif(CSRs.mreset)) // One HTIF module per chip
@@ -155,11 +153,6 @@ class Uncore(implicit val p: Parameters) extends Module
   outmemsys.io.htif_uncached <> htif.io.mem
   outmemsys.io.tiles_uncached <> io.tiles_uncached
   outmemsys.io.tiles_cached <> io.tiles_cached
-  if (p(UseDma)) {
-    val dma_arb = Module(new DmaArbiter(nTiles))
-    dma_arb.io.in <> io.dma
-    outmemsys.io.dma <> dma_arb.io.out
-  }
 
   for (i <- 0 until nTiles) {
     io.htif(i).reset := htif.io.cpu(i).reset
@@ -213,7 +206,6 @@ class OuterMemorySystem(implicit val p: Parameters) extends Module with HasTopLe
     val scr = new SmiIO(xLen, scrAddrBits)
     val mmio = new NastiIO
     val deviceTree = new NastiIO
-    val dma = (new DmaIO).flip
   }
 
   val dmaOpt = if (p(UseDma)) Some(Module(new DmaEngine)) else None
@@ -278,8 +270,8 @@ class OuterMemorySystem(implicit val p: Parameters) extends Module with HasTopLe
   interconnect.io.masters(nManagers) <> rtc.io
 
   dmaOpt.foreach { dma =>
-    dma.io.dma <> io.dma
     interconnect.io.masters(nManagers + 1) <> dma.io.outer
+    dma.io.ctrl <> interconnect.io.slaves(addrHashMap("devices:dma").port)
   }
 
   for (i <- 0 until nTiles) {
