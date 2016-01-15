@@ -28,7 +28,7 @@ class DefaultConfig extends Config (
       new AddrMap(deviceTree +: csrs :+ scr)
     }
     def makeDeviceTree() = {
-      val addrMap = new AddrHashMap(site(GlobalAddrMap))
+      val addrMap = new AddrHashMap(site(GlobalAddrMap), site(MMIOBase))
       val devices = site(GlobalDeviceSet)
       val dt = new DeviceTreeGenerator
       dt.beginNode("")
@@ -89,8 +89,8 @@ class DefaultConfig extends Config (
       case MIFTagBits => // Bits needed at the L2 agent
                          log2Up(site(NAcquireTransactors)+2) +
                          // Bits added by NASTI interconnect
-                         log2Up(site(NMemoryChannels) * site(NBanksPerMemoryChannel) +
-                                (if (site(UseDma)) 2 else 1))
+                         max(log2Up(site(NBanksPerMemoryChannel)),
+                            (if (site(UseDma)) 3 else 2))
       case MIFDataBits => 64
       case MIFAddrBits => site(PAddrBits) - site(CacheBlockOffsetBits)
       case MIFDataBeats => site(CacheBlockBytes) * 8 / site(MIFDataBits)
@@ -157,10 +157,6 @@ class DefaultConfig extends Config (
       case UseStreamLoopback => false
       case NDmaTransactors => 3
       case NDmaXacts => site(NDmaTransactors) * site(NTiles)
-      case DmaBaseAddr => {
-        val addrMap = new AddrHashMap(site(GlobalAddrMap))
-        addrMap("devices:dma").start
-      }
       //Rocket Core Constants
       case FetchWidth => 1
       case RetireWidth => 1
@@ -190,7 +186,7 @@ class DefaultConfig extends Config (
       case TLKey("L1toL2") => 
         TileLinkParameters(
           coherencePolicy = new MESICoherence(site(L2DirectoryRepresentation)),
-          nManagers = site(NBanksPerMemoryChannel)*site(NMemoryChannels),
+          nManagers = site(NBanksPerMemoryChannel)*site(NMemoryChannels) + 1,
           nCachingClients = site(NTiles),
           nCachelessClients = (if (site(UseDma)) 2 else 1) +
                               site(NTiles) *
@@ -228,7 +224,6 @@ class DefaultConfig extends Config (
       case GlobalAddrMap => {
         val extraSize = site(ExternalIOStart) - site(MMIOBase)
         AddrMap(
-          AddrMapEntry("mem", None, MemChannels(site(MMIOBase), site(NMemoryChannels), AddrMapConsts.RWX)),
           AddrMapEntry("conf", None, MemSubmap(extraSize / 2, genCsrAddrMap)),
           AddrMapEntry("devices", None, MemSubmap(extraSize / 2, site(GlobalDeviceSet).getAddrMap)),
           AddrMapEntry("io", Some(site(ExternalIOStart)), MemSize(2 * site(MMIOBase), AddrMapConsts.RW)))
@@ -419,7 +414,7 @@ class WithStreamLoopback extends Config(
     case StreamLoopbackWidth => 64
   })
 
-class DmaControllerConfig extends Config(new WithDmaController ++ new DefaultL2Config)
+class DmaControllerConfig extends Config(new WithDmaController ++ new WithStreamLoopback ++ new DefaultL2Config)
 
 class SmallL2Config extends Config(
   new With2MemoryChannels ++ new With4BanksPerMemChannel ++

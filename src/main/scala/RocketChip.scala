@@ -209,6 +209,7 @@ class OuterMemorySystem(implicit val p: Parameters) extends Module with HasTopLe
   }
 
   val dmaOpt = if (p(UseDma)) Some(Module(new DmaEngine)) else None
+  val mmioBase = p(MMIOBase)
 
   // Create a simple L1toL2 NoC between the tiles+htif and the banks of outer memory
   // Cached ports are first in client list, making sharerToClientId just an indentity function
@@ -217,22 +218,29 @@ class OuterMemorySystem(implicit val p: Parameters) extends Module with HasTopLe
     (io.tiles_uncached ++ dmaOpt.map(_.io.inner) :+ io.htif_uncached)
       .map(TileLinkIOWrapper(_))) 
   def sharerToClientId(sharerId: UInt) = sharerId
-  def addrToBank(addr: Bits): UInt = if(nBanks > 1) addr(lsb + log2Up(nBanks) - 1, lsb) else UInt(0)
+  def addrToBank(addr: Bits): UInt = {
+    Mux(addr.toUInt < UInt(mmioBase >> log2Up(p(CacheBlockBytes))),
+      if (nBanks > 1) addr(lsb + log2Up(nBanks) - 1, lsb) else UInt(0),
+      UInt(nBanks))
+  }
   val preBuffering = TileLinkDepths(2,2,2,2,2)
   val postBuffering = TileLinkDepths(0,0,1,0,0) //TODO: had EOS24 crit path on inner.release
-  val l1tol2net = Module(
-    if(nBanks == 1) new RocketChipTileLinkArbiter(sharerToClientId, preBuffering, postBuffering)
-    else new RocketChipTileLinkCrossbar(addrToBank, sharerToClientId, preBuffering, postBuffering))
+  val l1tol2net = Module(new RocketChipTileLinkCrossbar(addrToBank, sharerToClientId, preBuffering, postBuffering))
 
   // Create point(s) of coherence serialization
-  val nManagers = nMemChannels * nBanksPerMemChannel
-  val managerEndpoints = List.tabulate(nManagers){id => p(BuildL2CoherenceManager)(id, p)}
+  val managerEndpoints = List.tabulate(nBanks){id => p(BuildL2CoherenceManager)(id, p)}
   managerEndpoints.foreach { _.incoherent := io.incoherent }
+
+  val mmioManager = Module(new MMIOTileLinkManager()(p.alterPartial({
+    case TLId => "L1toL2"
+    case InnerTLId => "L1toL2"
+    case OuterTLId => "L2toMC"
+  })))
 
   // Wire the tiles and htif to the TileLink client ports of the L1toL2 network,
   // and coherence manager(s) to the other side
   l1tol2net.io.clients <> ordered_clients
-  l1tol2net.io.managers <> managerEndpoints.map(_.innerTL)
+  l1tol2net.io.managers <> managerEndpoints.map(_.innerTL) :+ mmioManager.io.inner
 
   // Create a converter between TileLinkIO and MemIO for each channel
   val outerTLParams = p.alterPartial({ case TLId => "L2toMC" })
@@ -240,8 +248,8 @@ class OuterMemorySystem(implicit val p: Parameters) extends Module with HasTopLe
   val backendBuffering = TileLinkDepths(0,0,0,0,0)
 
   val addrMap = p(GlobalAddrMap)
-  val addrHashMap = new AddrHashMap(addrMap)
-  val nMasters = managerEndpoints.size + (if (dmaOpt.isEmpty) 1 else 2)
+  val addrHashMap = new AddrHashMap(addrMap, mmioBase)
+  val nMasters = (if (dmaOpt.isEmpty) 2 else 3)
   val nSlaves = addrHashMap.nEntries
 
   println("Generated Address Map")
@@ -249,12 +257,8 @@ class OuterMemorySystem(implicit val p: Parameters) extends Module with HasTopLe
     println(f"\t$name%s $base%x - ${base + size - 1}%x")
   }
 
-  val interconnect = if (nMemChannels == 1)
-    Module(new NastiRecursiveInterconnect(
-      nMasters, nSlaves, addrMap))
-  else
-    Module(new NastiPerformanceInterconnect(
-      nBanksPerMemChannel, nMemChannels, 1, nSlaves - nMemChannels, addrMap))
+  val mmio_ic = Module(new NastiRecursiveInterconnect(nMasters, nSlaves, addrMap, mmioBase))
+  val mem_ic = Module(new NastiMemoryInterconnect(nBanksPerMemChannel, nMemChannels))
 
   for ((bank, i) <- managerEndpoints.zipWithIndex) {
     val unwrap = Module(new ClientTileLinkIOUnwrapper()(outerTLParams))
@@ -263,42 +267,47 @@ class OuterMemorySystem(implicit val p: Parameters) extends Module with HasTopLe
     unwrap.io.in <> ClientTileLinkEnqueuer(bank.outerTL, backendBuffering)(outerTLParams)
     narrow.io.in <> unwrap.io.out
     conv.io.tl <> narrow.io.out
-    TopUtils.connectNasti(interconnect.io.masters(i), conv.io.nasti)
+    TopUtils.connectNasti(mem_ic.io.masters(i), conv.io.nasti)
   }
 
+  val mmio_narrow = Module(new TileLinkIONarrower("L2toMC", "Outermost"))
+  val mmio_conv = Module(new NastiIOTileLinkIOConverter()(outermostTLParams))
+  mmio_narrow.io.in <> mmioManager.io.outer
+  mmio_conv.io.tl <> mmio_narrow.io.out
+  TopUtils.connectNasti(mmio_ic.io.masters(0), mmio_conv.io.nasti)
+
   val rtc = Module(new RTC(CSRs.mtime))
-  interconnect.io.masters(nManagers) <> rtc.io
+  mmio_ic.io.masters(1) <> rtc.io
 
   dmaOpt.foreach { dma =>
-    interconnect.io.masters(nManagers + 1) <> dma.io.outer
-    dma.io.ctrl <> interconnect.io.slaves(addrHashMap("devices:dma").port)
+    mmio_ic.io.masters(2) <> dma.io.outer
+    dma.io.ctrl <> mmio_ic.io.slaves(addrHashMap("devices:dma").port)
   }
 
   for (i <- 0 until nTiles) {
     val csrName = s"conf:csr$i"
     val csrPort = addrHashMap(csrName).port
     val conv = Module(new SmiIONastiIOConverter(xLen, csrAddrBits))
-    conv.io.nasti <> interconnect.io.slaves(csrPort)
+    conv.io.nasti <> mmio_ic.io.slaves(csrPort)
     io.csr(i) <> conv.io.smi
   }
 
-  val src_conv = Module(new SmiIONastiIOConverter(scrDataBits, scrAddrBits))
-  src_conv.io.nasti <> interconnect.io.slaves(addrHashMap("conf:scr").port)
-  io.scr <> src_conv.io.smi
+  val scr_conv = Module(new SmiIONastiIOConverter(scrDataBits, scrAddrBits))
+  scr_conv.io.nasti <> mmio_ic.io.slaves(addrHashMap("conf:scr").port)
+  io.scr <> scr_conv.io.smi
 
   if (p(UseStreamLoopback)) {
     val lo_width = p(StreamLoopbackWidth)
     val lo_size = p(StreamLoopbackSize)
     val lo_conv = Module(new NastiIOStreamIOConverter(lo_width))
-    lo_conv.io.nasti <> interconnect.io.slaves(addrHashMap("devices:loopback").port)
+    lo_conv.io.nasti <> mmio_ic.io.slaves(addrHashMap("devices:loopback").port)
     lo_conv.io.stream.in <> Queue(lo_conv.io.stream.out, lo_size)
   }
 
-  io.mmio <> interconnect.io.slaves(addrHashMap("io").port)
-  io.deviceTree <> interconnect.io.slaves(addrHashMap("conf:devicetree").port)
+  io.mmio <> mmio_ic.io.slaves(addrHashMap("io").port)
+  io.deviceTree <> mmio_ic.io.slaves(addrHashMap("conf:devicetree").port)
 
-  val mem_channels = interconnect.io.slaves.take(nMemChannels)
-
+  val mem_channels = mem_ic.io.slaves
   // Create a SerDes for backup memory port
   if(p(UseBackupMemoryPort)) {
     VLSIUtils.doOuterMemorySystemSerdes(

@@ -13,7 +13,7 @@ class WithGroundTest extends Config(
     case TLKey("L1toL2") =>
       TileLinkParameters(
         coherencePolicy = new MESICoherence(site(L2DirectoryRepresentation)),
-        nManagers = site(NBanksPerMemoryChannel)*site(NMemoryChannels),
+        nManagers = site(NBanksPerMemoryChannel)*site(NMemoryChannels) + 1,
         nCachingClients = site(NTiles),
         nCachelessClients = site(NTiles) + (if (site(UseDma)) 2 else 1),
         maxClientXacts = max(site(NMSHRs) + site(NIOMSHRs),
@@ -93,10 +93,6 @@ class WithDmaStreamTest extends Config(
     case UseDma => true
     case BuildGroundTest =>
       (id: Int, p: Parameters) => Module(new DmaStreamTest()(p))
-    case DmaStreamLoopbackAddr => {
-      val addrMap = new AddrHashMap(site(GlobalAddrMap))
-      addrMap("devices:loopback").start
-    }
     case DmaStreamTestSettings => DmaStreamTestConfig(
       source = 0x10, dest = 0x28, len = 0x18,
       size = site(StreamLoopbackWidth) / 8)
