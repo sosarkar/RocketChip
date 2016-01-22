@@ -102,6 +102,12 @@ class WithDmaStreamTest extends Config(
       size = site(StreamLoopbackWidth) / 8)
   })
 
+class WithAtosConverterTest extends Config(
+  (pname, site, here) => pname match {
+    case BuildGroundTest =>
+      (id: Int, p: Parameters) => Module(new AtosConverterTest()(p))
+  })
+
 class GroundTestConfig extends Config(new WithGroundTest ++ new DefaultConfig)
 class MemtestConfig extends Config(new WithMemtest ++ new GroundTestConfig)
 class MemtestL2Config extends Config(
@@ -114,6 +120,7 @@ class CacheRegressionTestConfig extends Config(
   new WithCacheRegressionTest ++ new WithL2Cache ++ new GroundTestConfig)
 class DmaTestConfig extends Config(new WithDmaTest ++ new WithL2Cache ++ new GroundTestConfig)
 class DmaStreamTestConfig extends Config(new WithDmaStreamTest ++ new WithStreamLoopback ++ new WithL2Cache ++ new GroundTestConfig)
+class AtosConverterTestConfig extends Config(new WithAtosConverterTest ++ new GroundTestConfig)
 
 class FancyMemtestConfig extends Config(
   new With2Cores ++ new With2MemoryChannels ++ new With2BanksPerMemChannel ++
